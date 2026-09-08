@@ -14,6 +14,7 @@ from app.db.models import (
     JWT,
     TLS,
     AcmeAccount,
+    AcmeSettings,
     Admin,
     AdminUsageLogs,
     Certificate,
@@ -901,6 +902,36 @@ def get_tls_certificate(db: Session) -> TLS:
         TLS: TLS certificate information.
     """
     return db.query(TLS).first()
+
+
+def get_acme_settings(db: Session) -> Optional[AcmeSettings]:
+    """Retrieves the admin-configured ACME settings (email / Cloudflare
+    token / directory URL), if any have been saved via the API."""
+    return db.query(AcmeSettings).first()
+
+
+def save_acme_settings(
+    db: Session, email: Optional[str], cloudflare_api_token: Optional[str], directory_url: Optional[str]
+) -> AcmeSettings:
+    """Creates or updates the (singleton) admin-configured ACME settings.
+    `cloudflare_api_token` is only overwritten when a non-None value is
+    passed, so the stored token can be left untouched when only the email
+    is being changed."""
+    settings = get_acme_settings(db)
+    if settings is None:
+        settings = AcmeSettings()
+        db.add(settings)
+
+    settings.email = email
+    settings.directory_url = directory_url
+    if cloudflare_api_token:
+        # an empty/omitted token means "leave the stored one untouched" --
+        # the frontend never round-trips the actual secret back to the API
+        settings.cloudflare_api_token = cloudflare_api_token
+
+    db.commit()
+    db.refresh(settings)
+    return settings
 
 
 def get_acme_account(db: Session) -> Optional[AcmeAccount]:

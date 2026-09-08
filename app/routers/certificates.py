@@ -7,10 +7,16 @@ from app import logger, xray
 from app.db import Session, crud, get_db
 from app.db.models import Certificate as DBCertificate
 from app.models.admin import Admin
-from app.models.certificate import CertificateRequest, CertificateResponse
+from app.models.certificate import (
+    AcmeSettingsRequest,
+    AcmeSettingsResponse,
+    CertificateRequest,
+    CertificateResponse,
+)
 from app.utils import responses
 from app.utils.acme import AcmeError, issue_and_store_certificate
 from app.utils.cloudflare import CloudflareError
+from config import ACME_DIRECTORY_URL, ACME_EMAIL, CLOUDFLARE_API_TOKEN
 
 router = APIRouter(
     tags=["Certificate"], prefix="/api", responses={401: responses._401, 403: responses._403}
@@ -40,6 +46,40 @@ def _run_issuance(domain: str, inbound_tags: List[str], auto_renew: bool):
         issue_and_store_certificate(domain, inbound_tags, auto_renew)
     except (AcmeError, CloudflareError):
         pass  # already logged and persisted by issue_and_store_certificate
+
+
+@router.get("/certificates/settings", response_model=AcmeSettingsResponse)
+def get_acme_settings(db: Session = Depends(get_db), admin: Admin = Depends(Admin.check_sudo_admin)):
+    """Retrieve the configured ACME email / directory URL, and whether a
+    Cloudflare API token is set (its value is never returned)."""
+    settings = crud.get_acme_settings(db)
+
+    return AcmeSettingsResponse(
+        email=(settings.email if settings else None) or ACME_EMAIL or None,
+        cloudflare_api_token_configured=bool(
+            (settings.cloudflare_api_token if settings else None) or CLOUDFLARE_API_TOKEN
+        ),
+        directory_url=(settings.directory_url if settings else None) or ACME_DIRECTORY_URL,
+    )
+
+
+@router.put("/certificates/settings", response_model=AcmeSettingsResponse)
+def update_acme_settings(
+    payload: AcmeSettingsRequest,
+    db: Session = Depends(get_db),
+    admin: Admin = Depends(Admin.check_sudo_admin),
+):
+    """Update the ACME email / Cloudflare API token / directory URL used
+    for certificate issuance. Leave cloudflare_api_token empty to keep the
+    currently stored token unchanged."""
+    settings = crud.save_acme_settings(
+        db, payload.email, payload.cloudflare_api_token, payload.directory_url
+    )
+    return AcmeSettingsResponse(
+        email=settings.email,
+        cloudflare_api_token_configured=bool(settings.cloudflare_api_token),
+        directory_url=settings.directory_url or ACME_DIRECTORY_URL,
+    )
 
 
 @router.get("/certificates", response_model=List[CertificateResponse])

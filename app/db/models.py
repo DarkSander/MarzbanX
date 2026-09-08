@@ -301,6 +301,15 @@ class AcmeAccount(Base):
     account_url = Column(String(512), nullable=True)
 
 
+class AcmeSettings(Base):
+    __tablename__ = "acme_settings"
+
+    id = Column(Integer, primary_key=True)
+    email = Column(String(256), nullable=True)
+    cloudflare_api_token = Column(String(512), nullable=True)
+    directory_url = Column(String(512), nullable=True)
+
+
 class Certificate(Base):
     __tablename__ = "certificates"
 

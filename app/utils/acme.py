@@ -29,6 +29,21 @@ class AcmeError(Exception):
     pass
 
 
+def get_effective_acme_settings() -> dict:
+    """Resolves the email/Cloudflare token/directory URL to actually use:
+    the admin-configured values from the database take priority, falling
+    back to the ACME_EMAIL/CLOUDFLARE_API_TOKEN/ACME_DIRECTORY_URL env vars
+    for anything left unset in the database."""
+    with GetDB() as db:
+        settings = crud.get_acme_settings(db)
+
+    return {
+        "email": (settings.email if settings else None) or ACME_EMAIL,
+        "cloudflare_api_token": (settings.cloudflare_api_token if settings else None) or CLOUDFLARE_API_TOKEN,
+        "directory_url": (settings.directory_url if settings else None) or ACME_DIRECTORY_URL,
+    }
+
+
 def _generate_rsa_key_pem(key_size: int) -> bytes:
     key = rsa.generate_private_key(public_exponent=65537, key_size=key_size)
     return key.private_bytes(
@@ -38,12 +53,7 @@ def _generate_rsa_key_pem(key_size: int) -> bytes:
     )
 
 
-def _get_acme_client() -> client.ClientV2:
-    if not ACME_EMAIL:
-        raise AcmeError("ACME_EMAIL is not configured")
-    if not CLOUDFLARE_API_TOKEN:
-        raise AcmeError("CLOUDFLARE_API_TOKEN is not configured")
-
+def _get_acme_client(email: str, directory_url: str) -> client.ClientV2:
     with GetDB() as db:
         account = crud.get_acme_account(db)
         if account is None:
@@ -55,13 +65,13 @@ def _get_acme_client() -> client.ClientV2:
         serialization.load_pem_private_key(account_key_pem, password=None)
     ))
     net = client.ClientNetwork(jwk, user_agent=USER_AGENT)
-    directory = client.ClientV2.get_directory(ACME_DIRECTORY_URL, net)
+    directory = client.ClientV2.get_directory(directory_url, net)
     acme_client = client.ClientV2(directory, net)
 
     try:
         # First time this account key is used: register a fresh account.
         regr = acme_client.new_account(
-            messages.NewRegistration.from_data(email=ACME_EMAIL, terms_of_service_agreed=True)
+            messages.NewRegistration.from_data(email=email, terms_of_service_agreed=True)
         )
     except errors.ConflictError as e:
         # The ACME server already has an account for this key (e.g. every
@@ -75,7 +85,7 @@ def _get_acme_client() -> client.ClientV2:
     with GetDB() as db:
         account = crud.get_acme_account(db)
         if account is None:
-            crud.create_acme_account(db, email=ACME_EMAIL, private_key=account_key_pem.decode(),
+            crud.create_acme_account(db, email=email, private_key=account_key_pem.decode(),
                                      account_url=regr.uri)
 
     return acme_client
@@ -114,9 +124,16 @@ def issue_certificate(domain: str) -> dict:
     "issued_at": dt, "expires_at": dt}. Raises AcmeError/CloudflareError on
     failure; the TXT record is always cleaned up before returning/raising.
     """
-    acme_client = _get_acme_client()
+    settings = get_effective_acme_settings()
+    if not settings["email"]:
+        raise AcmeError("No ACME email configured (set it in the Certificates panel or ACME_EMAIL)")
+    if not settings["cloudflare_api_token"]:
+        raise AcmeError("No Cloudflare API token configured (set it in the Certificates panel or CLOUDFLARE_API_TOKEN)")
+    cf_token = settings["cloudflare_api_token"]
 
-    zone_id = get_zone_id(CLOUDFLARE_API_TOKEN, domain)
+    acme_client = _get_acme_client(settings["email"], settings["directory_url"])
+
+    zone_id = get_zone_id(cf_token, domain)
 
     cert_key_pem = _generate_rsa_key_pem(CERT_KEY_SIZE)
     csr_pem = crypto_util.make_csr(cert_key_pem, [domain])
@@ -137,7 +154,7 @@ def issue_certificate(domain: str) -> dict:
             validation_value = dns_challenge.chall.validation(acme_client.net.key)
             record_name = dns_challenge.chall.validation_domain_name(domain)
 
-            record_id = create_txt_record(CLOUDFLARE_API_TOKEN, zone_id, record_name, validation_value)
+            record_id = create_txt_record(cf_token, zone_id, record_name, validation_value)
             _wait_for_dns_propagation(record_name, validation_value)
 
             response = dns_challenge.response(acme_client.net.key)
@@ -151,7 +168,7 @@ def issue_certificate(domain: str) -> dict:
     finally:
         if record_id:
             try:
-                delete_txt_record(CLOUDFLARE_API_TOKEN, zone_id, record_id)
+                delete_txt_record(cf_token, zone_id, record_id)
             except CloudflareError as e:
                 logger.warning(f'Failed to clean up ACME TXT record for "{domain}": {e}')
 

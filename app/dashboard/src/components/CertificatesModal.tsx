@@ -7,7 +7,6 @@ import {
   Alert,
   AlertIcon,
   Badge,
-  Box,
   Button,
   Checkbox,
   CheckboxGroup,
@@ -31,15 +30,20 @@ import {
 } from "@chakra-ui/react";
 import {
   ArrowPathIcon,
+  Cog6ToothIcon,
   LockClosedIcon,
   PlusIcon as HeroIconPlusIcon,
 } from "@heroicons/react/24/outline";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
+  AcmeSettingsFormType,
+  AcmeSettingsSchema,
   CertificateFormType,
   CertificateSchema,
   CertificateType,
+  FetchAcmeSettingsQueryKey,
   FetchCertificatesQueryKey,
+  useAcmeSettingsQuery,
   useCertificates,
   useCertificatesQuery,
 } from "contexts/CertificatesContext";
@@ -77,6 +81,10 @@ const PlusIcon = chakra(HeroIconPlusIcon, {
 
 const ReissueIcon = chakra(ArrowPathIcon, {
   baseStyle: { w: 4, h: 4 },
+});
+
+const SettingsIcon = chakra(Cog6ToothIcon, {
+  baseStyle: { w: 5, h: 5, strokeWidth: 2 },
 });
 
 const statusColor: Record<CertificateType["status"], string> = {
@@ -213,6 +221,84 @@ const CertificateAccordion: FC<{ cert: CertificateType }> = ({ cert }) => {
   );
 };
 
+const AcmeSettingsForm: FC = () => {
+  const { t } = useTranslation();
+  const toast = useToast();
+  const queryClient = useQueryClient();
+  const { data: settings } = useAcmeSettingsQuery();
+  const { saveAcmeSettings } = useCertificates();
+
+  const form = useForm<AcmeSettingsFormType>({
+    resolver: zodResolver(AcmeSettingsSchema),
+    values: {
+      email: settings?.email || "",
+      cloudflare_api_token: "",
+      directory_url: settings?.directory_url || "",
+    },
+  });
+
+  const { isLoading, mutate } = useMutation(saveAcmeSettings, {
+    onSuccess: () => {
+      generateSuccessMessage(t("certificates.settingsSaved"), toast);
+      queryClient.invalidateQueries(FetchAcmeSettingsQueryKey);
+      form.setValue("cloudflare_api_token", "");
+    },
+    onError: (e) => {
+      generateErrorMessage(e, toast, form);
+    },
+  });
+
+  return (
+    <form onSubmit={form.handleSubmit((v) => mutate(v))}>
+      <VStack alignItems="flex-start" gap={3}>
+        <FormControl>
+          <CustomInput
+            label={t("certificates.email")}
+            size="sm"
+            type="email"
+            placeholder="you@example.com"
+            {...form.register("email")}
+            error={form.formState?.errors?.email?.message}
+          />
+        </FormControl>
+        <FormControl>
+          <CustomInput
+            label={t("certificates.cloudflareToken")}
+            size="sm"
+            type="password"
+            placeholder={
+              settings?.cloudflare_api_token_configured
+                ? t("certificates.cloudflareTokenConfigured")
+                : ""
+            }
+            {...form.register("cloudflare_api_token")}
+            error={form.formState?.errors?.cloudflare_api_token?.message}
+          />
+        </FormControl>
+        <FormControl>
+          <CustomInput
+            label={t("certificates.directoryUrl")}
+            size="sm"
+            placeholder="https://acme-v02.api.letsencrypt.org/directory"
+            {...form.register("directory_url")}
+            error={form.formState?.errors?.directory_url?.message}
+          />
+        </FormControl>
+        <Button
+          type="submit"
+          colorScheme="primary"
+          size="sm"
+          px={5}
+          w="full"
+          isLoading={isLoading}
+        >
+          {t("certificates.saveSettings")}
+        </Button>
+      </VStack>
+    </form>
+  );
+};
+
 const RequestCertificateForm: FC = () => {
   const { t } = useTranslation();
   const toast = useToast();
@@ -336,6 +422,37 @@ export const CertificatesModal: FC = () => {
 
             <Accordion w="full" allowToggle>
               <VStack w="full">
+                <AccordionItem
+                  border="1px solid"
+                  _dark={{ borderColor: "gray.600" }}
+                  _light={{ borderColor: "gray.200" }}
+                  borderRadius="4px"
+                  p={1}
+                  w="full"
+                >
+                  <AccordionButton px={2} borderRadius="3px">
+                    <Text
+                      as="span"
+                      fontWeight="medium"
+                      fontSize="sm"
+                      flex="1"
+                      textAlign="left"
+                      color="gray.700"
+                      _dark={{ color: "gray.300" }}
+                      display="flex"
+                      alignItems="center"
+                      gap={1}
+                    >
+                      <SettingsIcon display="inline-block" />
+                      <span>{t("certificates.acmeSettings")}</span>
+                    </Text>
+                    <AccordionIcon />
+                  </AccordionButton>
+                  <AccordionPanel px={2} py={4}>
+                    <AcmeSettingsForm />
+                  </AccordionPanel>
+                </AccordionItem>
+
                 {!isLoading &&
                   certificates &&
                   certificates.map((cert) => (

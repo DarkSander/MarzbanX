@@ -25,6 +25,21 @@ export type CertificateType = {
 };
 
 export const FetchCertificatesQueryKey = "fetch-certificates-query-key";
+export const FetchAcmeSettingsQueryKey = "fetch-acme-settings-query-key";
+
+export const AcmeSettingsSchema = z.object({
+  email: z.string().email().or(z.literal("")).nullable().optional(),
+  cloudflare_api_token: z.string().optional(),
+  directory_url: z.string().or(z.literal("")).nullable().optional(),
+});
+
+export type AcmeSettingsFormType = z.infer<typeof AcmeSettingsSchema>;
+
+export type AcmeSettingsType = {
+  email: string | null;
+  cloudflare_api_token_configured: boolean;
+  directory_url: string | null;
+};
 
 export type CertificateStore = {
   requestCertificate: (cert: CertificateFormType) => Promise<unknown>;
@@ -33,6 +48,8 @@ export type CertificateStore = {
   deletingCertificate?: CertificateType | null;
   deleteCertificate: () => Promise<unknown>;
   setDeletingCertificate: (cert: CertificateType | null) => void;
+  fetchAcmeSettings: () => Promise<AcmeSettingsType>;
+  saveAcmeSettings: (settings: AcmeSettingsFormType) => Promise<unknown>;
 };
 
 export const useCertificatesQuery = () => {
@@ -63,4 +80,18 @@ export const useCertificates = create<CertificateStore>((set, get) => ({
       method: "DELETE",
     });
   },
+  fetchAcmeSettings() {
+    return fetch("/certificates/settings");
+  },
+  saveAcmeSettings(body) {
+    return fetch("/certificates/settings", { method: "PUT", body });
+  },
 }));
+
+export const useAcmeSettingsQuery = () => {
+  return useQuery({
+    queryKey: FetchAcmeSettingsQueryKey,
+    queryFn: useCertificates.getState().fetchAcmeSettings,
+    refetchOnWindowFocus: false,
+  });
+};

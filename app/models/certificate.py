@@ -22,3 +22,15 @@ class CertificateResponse(BaseModel):
     days_remaining: Optional[int] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class AcmeSettingsRequest(BaseModel):
+    email: Optional[str] = None
+    cloudflare_api_token: Optional[str] = None
+    directory_url: Optional[str] = None
+
+
+class AcmeSettingsResponse(BaseModel):
+    email: Optional[str] = None
+    cloudflare_api_token_configured: bool
+    directory_url: Optional[str] = None
