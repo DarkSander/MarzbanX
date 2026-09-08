@@ -4,15 +4,18 @@ from enum import Enum
 from typing import Optional, Union
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from app.utils.crypto import derive_wireguard_public_key, generate_wireguard_keypair
 from app.utils.system import random_password
 from xray_api.types.account import (
+    HysteriaAccount,
     ShadowsocksAccount,
     ShadowsocksMethods,
     TrojanAccount,
     VLESSAccount,
     VMessAccount,
+    WireGuardAccount,
     XTLSFlows,
 )
 
@@ -29,6 +32,11 @@ class ProxyTypes(str, Enum):
     VLESS = "vless"
     Trojan = "trojan"
     Shadowsocks = "shadowsocks"
+    # This is the Hysteria2 protocol; Xray-core's own identifier for it is
+    # just "hysteria" (member name kept lowercase-matching so the
+    # func.lower(Proxy.type) lookup in xray/config.py keeps working).
+    Hysteria = "hysteria"
+    WireGuard = "wireguard"
 
     @property
     def account_model(self):
@@ -40,6 +48,10 @@ class ProxyTypes(str, Enum):
             return TrojanAccount
         if self == self.Shadowsocks:
             return ShadowsocksAccount
+        if self == self.Hysteria:
+            return HysteriaAccount
+        if self == self.WireGuard:
+            return WireGuardAccount
 
     @property
     def settings_model(self):
@@ -51,6 +63,10 @@ class ProxyTypes(str, Enum):
             return TrojanSettings
         if self == self.Shadowsocks:
             return ShadowsocksSettings
+        if self == self.Hysteria:
+            return HysteriaSettings
+        if self == self.WireGuard:
+            return WireGuardSettings
 
 
 class ProxySettings(BaseModel, use_enum_values=True):
@@ -93,6 +109,27 @@ class ShadowsocksSettings(ProxySettings):
 
     def revoke(self):
         self.password = random_password()
+
+
+class HysteriaSettings(ProxySettings):
+    password: str = Field(default_factory=random_password)
+
+    def revoke(self):
+        self.password = random_password()
+
+
+class WireGuardSettings(ProxySettings):
+    private_key: str = Field(default_factory=lambda: generate_wireguard_keypair()[0])
+    public_key: str = ""
+
+    @model_validator(mode="after")
+    def fill_public_key(self):
+        if not self.public_key:
+            self.public_key = derive_wireguard_public_key(self.private_key)
+        return self
+
+    def revoke(self):
+        self.private_key, self.public_key = generate_wireguard_keypair()
 
 
 class ProxyHostSecurity(str, Enum):

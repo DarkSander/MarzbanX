@@ -6,6 +6,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from app import logger, xray
 from app.db import GetDB, crud
 from app.models.node import NodeStatus
+from app.models.proxy import ProxyTypes
 from app.models.user import UserResponse
 from app.utils.concurrency import threaded_function
 from app.xray.node import XRayNode
@@ -56,11 +57,28 @@ def _alter_inbound_user(api: XRayAPI, inbound_tag: str, account: Account):
         pass
 
 
+@threaded_function
+def _restart_core_for_wireguard():
+    # WireGuard peers are static: xray-core has no HandlerService support for
+    # them, so any change to a WireGuard user requires rebuilding the config
+    # and restarting the core (and every connected node) instead of a live
+    # gRPC add/remove like every other protocol.
+    config = xray.config.include_db_users()
+    xray.core.restart(config)
+    for node_id, node in list(xray.nodes.items()):
+        if node.connected and node.started:
+            xray.operations.restart_node(node_id, config)
+
+
 def add_user(dbuser: "DBUser"):
     user = UserResponse.model_validate(dbuser)
     email = f"{dbuser.id}.{dbuser.username}"
 
     for proxy_type, inbound_tags in user.inbounds.items():
+        if proxy_type == ProxyTypes.WireGuard:
+            _restart_core_for_wireguard()
+            continue
+
         for inbound_tag in inbound_tags:
             inbound = xray.config.inbounds_by_tag.get(inbound_tag, {})
 
@@ -93,7 +111,16 @@ def add_user(dbuser: "DBUser"):
 def remove_user(dbuser: "DBUser"):
     email = f"{dbuser.id}.{dbuser.username}"
 
-    for inbound_tag in xray.config.inbounds_by_tag:
+    has_wireguard = any(
+        inbound.get('protocol') == ProxyTypes.WireGuard.value
+        for inbound in xray.config.inbounds_by_tag.values()
+    )
+    if has_wireguard:
+        _restart_core_for_wireguard()
+
+    for inbound_tag, inbound in xray.config.inbounds_by_tag.items():
+        if inbound.get('protocol') == ProxyTypes.WireGuard.value:
+            continue
         _remove_user_from_inbound(xray.api, inbound_tag, email)
         for node in list(xray.nodes.values()):
             if node.connected and node.started:
@@ -106,8 +133,12 @@ def update_user(dbuser: "DBUser"):
 
     active_inbounds = []
     for proxy_type, inbound_tags in user.inbounds.items():
+        active_inbounds.extend(inbound_tags)
+
+        if proxy_type == ProxyTypes.WireGuard:
+            continue
+
         for inbound_tag in inbound_tags:
-            active_inbounds.append(inbound_tag)
             inbound = xray.config.inbounds_by_tag.get(inbound_tag, {})
 
             try:
@@ -135,8 +166,21 @@ def update_user(dbuser: "DBUser"):
                 if node.connected and node.started:
                     _alter_inbound_user(node.api, inbound_tag, account)
 
+    # There's no cheap way to tell whether this user's WireGuard membership
+    # actually changed, so if any WireGuard inbound exists at all, resync
+    # peers by rebuilding the config and restarting the core.
+    has_wireguard = any(
+        inbound.get('protocol') == ProxyTypes.WireGuard.value
+        for inbound in xray.config.inbounds_by_tag.values()
+    )
+    if has_wireguard:
+        _restart_core_for_wireguard()
+
     for inbound_tag in xray.config.inbounds_by_tag:
         if inbound_tag in active_inbounds:
+            continue
+        inbound = xray.config.inbounds_by_tag.get(inbound_tag, {})
+        if inbound.get('protocol') == ProxyTypes.WireGuard.value:
             continue
         # remove disabled inbounds
         _remove_user_from_inbound(xray.api, inbound_tag, email)

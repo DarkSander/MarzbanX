@@ -13,8 +13,9 @@ from app.db import GetDB
 from app.db import models as db_models
 from app.models.proxy import ProxyTypes
 from app.models.user import UserStatus
-from app.utils.crypto import get_cert_SANs
+from app.utils.crypto import derive_wireguard_public_key, get_cert_SANs
 from config import DEBUG, XRAY_EXCLUDE_INBOUND_TAGS, XRAY_FALLBACKS_INBOUND_TAG
+from xray_api.types.account import WireGuardAccount
 
 
 def merge_dicts(a, b):  # B will override A dictionary key and values
@@ -150,8 +151,14 @@ class XRayConfig(dict):
 
             if not inbound.get('settings'):
                 inbound['settings'] = {}
-            if not inbound['settings'].get('clients'):
-                inbound['settings']['clients'] = []
+
+            is_wireguard = inbound['protocol'] == ProxyTypes.WireGuard.value
+            if is_wireguard:
+                if not inbound['settings'].get('peers'):
+                    inbound['settings']['peers'] = []
+            else:
+                if not inbound['settings'].get('clients'):
+                    inbound['settings']['clients'] = []
 
             settings = {
                 "tag": inbound["tag"],
@@ -176,6 +183,30 @@ class XRayConfig(dict):
                         settings['is_fallback'] = True
                     except KeyError:
                         raise ValueError("fallbacks inbound doesn't have port")
+
+            # VLESS Encryption (post-quantum): the paired "encryption" string
+            # for clients lives next to "decryption" in the inbound settings
+            # as a Marzban-only bookkeeping field; Xray-core itself ignores it.
+            if inbound['protocol'] == ProxyTypes.VLESS.value:
+                encryption = inbound['settings'].get('encryption')
+                if encryption:
+                    settings['encryption'] = encryption
+
+            # WireGuard has no streamSettings/TLS layer of its own: the
+            # inbound's own public key (derived from its secretKey) is what
+            # clients need to connect, and is exposed for subscriptions here.
+            if is_wireguard:
+                settings['network'] = 'wireguard'
+                secret_key = inbound['settings'].get('secretKey')
+                if secret_key:
+                    settings['wg_pubkey'] = derive_wireguard_public_key(secret_key)
+                address = inbound['settings'].get('address') or []
+                settings['wg_address'] = address[0].split('/')[0] if address else ""
+                settings['wg_mtu'] = inbound['settings'].get('mtu', 1420)
+                self.inbounds.append(settings)
+                self.inbounds_by_tag[inbound['tag']] = settings
+                self.inbounds_by_protocol.setdefault(inbound['protocol'], []).append(settings)
+                continue
 
             # stream settings
             if stream := inbound.get('streamSettings'):
@@ -399,8 +430,28 @@ class XRayConfig(dict):
                 if not inbounds:
                     continue
 
+                is_wireguard = proxy_type == ProxyTypes.WireGuard.value
+
                 for inbound in inbounds:
-                    clients = config.get_inbound(inbound['tag'])['settings']['clients']
+                    resolved_settings = config.get_inbound(inbound['tag'])['settings']
+
+                    if is_wireguard:
+                        peers = resolved_settings['peers']
+
+                        for row in rows:
+                            user_id, username, settings, excluded_inbound_tags = row
+
+                            if excluded_inbound_tags and inbound['tag'] in excluded_inbound_tags:
+                                continue
+
+                            account = WireGuardAccount(email=f"{user_id}.{username}", **settings)
+                            peers.append({
+                                "publicKey": account.public_key,
+                                "allowedIPs": [f"{account.address}/32"]
+                            })
+                        continue
+
+                    clients = resolved_settings['clients']
 
                     for row in rows:
                         user_id, username, settings, excluded_inbound_tags = row

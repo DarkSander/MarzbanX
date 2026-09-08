@@ -90,6 +90,7 @@ class V2rayShareLink(str):
                 port=inbound["port"],
                 id=settings["id"],
                 flow=settings.get("flow", ""),
+                encryption=inbound.get("encryption", ""),
                 net=net,
                 tls=inbound["tls"],
                 sni=inbound.get("sni", ""),
@@ -155,6 +156,29 @@ class V2rayShareLink(str):
                 password=settings["password"],
                 method=settings["method"],
             )
+
+        elif inbound["protocol"] == "hysteria":
+            link = self.hysteria2(
+                remark=remark,
+                address=address,
+                port=inbound["port"],
+                auth=settings["password"],
+                sni=inbound.get("sni", ""),
+                alpn=inbound.get("alpn", ""),
+                ais=inbound.get("ais", ""),
+            )
+
+        elif inbound["protocol"] == "wireguard":
+            link = self.wireguard(
+                remark=remark,
+                address=address,
+                port=inbound["port"],
+                private_key=settings["private_key"],
+                client_address=settings.get("_wg_address", ""),
+                server_pubkey=inbound.get("wg_pubkey", ""),
+                mtu=inbound.get("wg_mtu", 1420),
+            )
+
         else:
             return
 
@@ -270,6 +294,7 @@ class V2rayShareLink(str):
               host='',
               type='',
               flow='',
+              encryption='',
               tls='none',
               sni='',
               fp='',
@@ -294,7 +319,11 @@ class V2rayShareLink(str):
         payload = {
             "security": tls,
             "type": net,
-            "headerType": type
+            "headerType": type,
+            # Xray-core >= v25 requires every VLESS client to state its
+            # encryption mode explicitly ("none" unless VLESS Encryption is
+            # configured on the inbound) or it refuses to connect.
+            "encryption": encryption or "none",
         }
         if flow and (tls in ('tls', 'reality') and net in ('tcp', 'raw', 'kcp') and type != 'http'):
             payload['flow'] = flow
@@ -482,6 +511,44 @@ class V2rayShareLink(str):
             "ss://"
             + base64.b64encode(f"{method}:{password}".encode()).decode()
             + f"@{address}:{port}#{urlparse.quote(remark)}"
+        )
+
+    @classmethod
+    def hysteria2(
+            cls, remark: str, address: str, port: int, auth: str,
+            sni: str = "", alpn: str = "", ais: str = ""
+    ):
+        payload = {}
+        if sni:
+            payload["sni"] = sni
+        if alpn:
+            payload["alpn"] = alpn
+        if ais:
+            payload["insecure"] = 1
+
+        return (
+            "hysteria2://"
+            + f"{urlparse.quote(auth, safe='')}@{address}:{port}/?"
+            + urlparse.urlencode(payload)
+            + f"#{urlparse.quote(remark)}"
+        )
+
+    @classmethod
+    def wireguard(
+            cls, remark: str, address: str, port: int, private_key: str,
+            client_address: str = "", server_pubkey: str = "", mtu: int = 1420
+    ):
+        payload = {
+            "publickey": server_pubkey,
+            "address": f"{client_address}/32" if client_address else "",
+            "mtu": mtu,
+        }
+
+        return (
+            "wireguard://"
+            + f"{urlparse.quote(private_key, safe='')}@{address}:{port}/?"
+            + urlparse.urlencode(payload)
+            + f"#{urlparse.quote(remark)}"
         )
 
 
@@ -809,7 +876,7 @@ class V2rayJsonConfig(str):
         }
 
     @staticmethod
-    def vless_config(address=None, port=None, id=None, flow="") -> dict:
+    def vless_config(address=None, port=None, id=None, flow="", encryption="") -> dict:
         return {
             "vnext": [
                 {
@@ -819,7 +886,7 @@ class V2rayJsonConfig(str):
                         {
                             "id": id,
                             "security": "auto",
-                            "encryption": "none",
+                            "encryption": encryption or "none",
                             "email": "https://gozargah.github.io/marzban/",
                             "alterId": 0,
                             "flow": flow
@@ -1024,7 +1091,8 @@ class V2rayJsonConfig(str):
             outbound["settings"] = self.vless_config(address=address,
                                                      port=port,
                                                      id=settings['id'],
-                                                     flow=flow)
+                                                     flow=flow,
+                                                     encryption=inbound.get('encryption', ''))
 
         elif inbound['protocol'] == 'trojan':
             outbound["settings"] = self.trojan_config(address=address,

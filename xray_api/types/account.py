@@ -5,6 +5,8 @@ from uuid import UUID
 from pydantic import BaseModel
 
 from ..proto.common.serial.typed_message_pb2 import TypedMessage
+from ..proto.proxy.hysteria.account.config_pb2 import \
+    Account as HysteriaAccountPb2
 from ..proto.proxy.shadowsocks.config_pb2 import \
     Account as ShadowsocksAccountPb2
 from ..proto.proxy.shadowsocks.config_pb2 import \
@@ -76,3 +78,36 @@ class ShadowsocksAccount(Account):
     @property
     def message(self):
         return Message(ShadowsocksAccountPb2(password=self.password, cipher_type=self.cipher_type))
+
+
+class HysteriaAccount(Account):
+    password: str
+
+    @property
+    def message(self):
+        return Message(HysteriaAccountPb2(auth=self.password))
+
+
+class WireGuardAccount(Account):
+    private_key: str
+    public_key: str
+
+    @property
+    def address(self) -> str:
+        # Deterministic tunnel address derived from the DB user id embedded
+        # at the start of "email" (Marzban encodes it as "{user_id}.{username}").
+        # Marzban reserves 10.90.0.1 for the inbound's own interface address
+        # (see XRayConfig._resolve_inbounds), so client addresses start at
+        # 10.90.0.2 and wrap after roughly 65k users on a single inbound.
+        try:
+            user_id = int(self.email.split('.', 1)[0])
+        except (ValueError, IndexError):
+            user_id = 0
+        host_part = (user_id + 1) & 0xFFFF
+        return f"10.90.{(host_part >> 8) & 0xFF}.{host_part & 0xFF}"
+
+    @property
+    def message(self):
+        # WireGuard peers are not managed through the HandlerService API;
+        # they are baked into the inbound's static "peers" list instead.
+        raise NotImplementedError("WireGuard users can't be added over the API, they require a core restart")

@@ -9,7 +9,9 @@ from typing import TYPE_CHECKING, List, Literal, Union
 from jdatetime import date as jd
 
 from app import xray
+from app.models.proxy import ProxyTypes
 from app.utils.system import get_public_ip, get_public_ipv6, readable_size
+from xray_api.types.account import WireGuardAccount
 
 from . import *
 
@@ -213,6 +215,7 @@ def setup_format_variables(extra_data: dict) -> dict:
         {
             "SERVER_IP": SERVER_IP,
             "SERVER_IPV6": SERVER_IPV6,
+            "USER_ID": extra_data.get("id"),
             "USERNAME": extra_data.get("username", "{USERNAME}"),
             "DATA_USAGE": readable_size(extra_data.get("used_traffic")),
             "DATA_LIMIT": data_limit,
@@ -313,11 +316,17 @@ def process_inbounds_and_tags(
                     }
                 )
 
+                settings_dict = settings.model_dump()
+                if protocol == ProxyTypes.WireGuard:
+                    user_id = format_variables.get("USER_ID")
+                    account = WireGuardAccount(email=f"{user_id}.", **settings_dict)
+                    settings_dict["_wg_address"] = account.address
+
                 conf.add(
                     remark=host["remark"].format_map(format_variables),
                     address=address.format_map(format_variables),
                     inbound=host_inbound,
-                    settings=settings.model_dump()
+                    settings=settings_dict
                 )
 
     return conf.render(reverse=reverse)
