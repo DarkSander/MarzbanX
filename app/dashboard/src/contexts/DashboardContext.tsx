@@ -13,7 +13,13 @@ export type FilterType = {
   sort: string;
   status?: "active" | "disabled" | "limited" | "expired" | "on_hold";
 };
-export type ProtocolType = "vmess" | "vless" | "trojan" | "shadowsocks";
+export type ProtocolType =
+  | "vmess"
+  | "vless"
+  | "trojan"
+  | "shadowsocks"
+  | "hysteria"
+  | "wireguard";
 
 export type FilterUsageType = {
   start?: string;
@@ -45,6 +51,7 @@ type DashboardStateType = {
   QRcodeLinks: string[] | null;
   isEditingHosts: boolean;
   isEditingNodes: boolean;
+  isEditingCertificates: boolean;
   isShowingNodesUsage: boolean;
   isResetingAllUsage: boolean;
   resetUsageUser: User | null;
@@ -65,6 +72,7 @@ type DashboardStateType = {
   setSubLink: (subscribeURL: string | null) => void;
   onEditingHosts: (isEditingHosts: boolean) => void;
   onEditingNodes: (isEditingHosts: boolean) => void;
+  onEditingCertificates: (isEditingCertificates: boolean) => void;
   onShowingNodesUsage: (isShowingNodesUsage: boolean) => void;
   resetDataUsage: (user: User) => Promise<void>;
   revokeSubscription: (user: User) => Promise<void>;
@@ -113,6 +121,7 @@ export const useDashboard = create(
     isResetingAllUsage: false,
     isEditingHosts: false,
     isEditingNodes: false,
+    isEditingCertificates: false,
     isShowingNodesUsage: false,
     resetUsageUser: null,
     revokeSubscriptionUser: null,
@@ -187,6 +196,9 @@ export const useDashboard = create(
     },
     onEditingNodes: (isEditingNodes: boolean) => {
       set({ isEditingNodes });
+    },
+    onEditingCertificates: (isEditingCertificates: boolean) => {
+      set({ isEditingCertificates });
     },
     onShowingNodesUsage: (isShowingNodesUsage: boolean) => {
       set({ isShowingNodesUsage });

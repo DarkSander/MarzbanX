@@ -139,6 +139,12 @@ SUB_PROFILE_TITLE = config("SUB_PROFILE_TITLE", default="Subscription")
 # discord webhook log
 DISCORD_WEBHOOK_URL = config("DISCORD_WEBHOOK_URL", default="")
 
+## Let's Encrypt / ACME certificate management (DNS-01 via Cloudflare)
+ACME_DIRECTORY_URL = config("ACME_DIRECTORY_URL", default="https://acme-v02.api.letsencrypt.org/directory")
+ACME_EMAIL = config("ACME_EMAIL", default="")
+CLOUDFLARE_API_TOKEN = config("CLOUDFLARE_API_TOKEN", default="")
+ACME_RENEWAL_THRESHOLD_DAYS = config("ACME_RENEWAL_THRESHOLD_DAYS", cast=int, default=30)
+
 
 # Interval jobs, all values are in seconds
 JOB_CORE_HEALTH_CHECK_INTERVAL = config("JOB_CORE_HEALTH_CHECK_INTERVAL", cast=int, default=10)
@@ -146,3 +152,4 @@ JOB_RECORD_NODE_USAGES_INTERVAL = config("JOB_RECORD_NODE_USAGES_INTERVAL", cast
 JOB_RECORD_USER_USAGES_INTERVAL = config("JOB_RECORD_USER_USAGES_INTERVAL", cast=int, default=10)
 JOB_REVIEW_USERS_INTERVAL = config("JOB_REVIEW_USERS_INTERVAL", cast=int, default=10)
 JOB_SEND_NOTIFICATIONS_INTERVAL = config("JOB_SEND_NOTIFICATIONS_INTERVAL", cast=int, default=30)
+JOB_CERTIFICATE_RENEWAL_INTERVAL = config("JOB_CERTIFICATE_RENEWAL_INTERVAL", cast=int, default=43200)

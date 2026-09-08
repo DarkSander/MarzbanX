@@ -1,4 +1,5 @@
 import { Box, VStack } from "@chakra-ui/react";
+import { CertificatesModal } from "components/CertificatesModal";
 import { CoreSettingsModal } from "components/CoreSettingsModal";
 import { DeleteUserModal } from "components/DeleteUserModal";
 import { Filters } from "components/Filters";
@@ -39,6 +40,7 @@ export const Dashboard: FC = () => {
         <NodesUsage />
         <ResetAllUsageModal />
         <CoreSettingsModal />
+        <CertificatesModal />
       </Box>
       <Footer />
     </VStack>

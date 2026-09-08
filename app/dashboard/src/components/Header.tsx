@@ -18,6 +18,7 @@ import {
   CurrencyDollarIcon,
   DocumentMinusIcon,
   LinkIcon,
+  LockClosedIcon,
   MoonIcon,
   SquaresPlusIcon,
   SunIcon,
@@ -54,6 +55,7 @@ const HostsIcon = chakra(LinkIcon, iconProps);
 const NodesIcon = chakra(SquaresPlusIcon, iconProps);
 const NodesUsageIcon = chakra(ChartPieIcon, iconProps);
 const ResetUsageIcon = chakra(DocumentMinusIcon, iconProps);
+const CertificatesIcon = chakra(LockClosedIcon, iconProps);
 const NotificationCircle = chakra(Box, {
   baseStyle: {
     bg: "yellow.500",
@@ -96,6 +98,7 @@ export const Header: FC<HeaderProps> = ({ actions }) => {
     onResetAllUsage,
     onEditingNodes,
     onShowingNodesUsage,
+    onEditingCertificates,
   } = useDashboard();
   const { t } = useTranslation();
   const { colorMode, toggleColorMode } = useColorMode();
@@ -174,6 +177,14 @@ export const Header: FC<HeaderProps> = ({ actions }) => {
                     onClick={onResetAllUsage.bind(null, true)}
                   >
                     {t("resetAllUsage")}
+                  </MenuItem>
+                  <MenuItem
+                    maxW="170px"
+                    fontSize="sm"
+                    icon={<CertificatesIcon />}
+                    onClick={onEditingCertificates.bind(null, true)}
+                  >
+                    {t("header.certificates")}
                   </MenuItem>
                 </>
               )}

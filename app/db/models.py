@@ -13,6 +13,7 @@ from sqlalchemy import (
     Integer,
     String,
     Table,
+    Text,
     UniqueConstraint,
     func,
 )
@@ -289,6 +290,31 @@ class TLS(Base):
     id = Column(Integer, primary_key=True)
     key = Column(String(4096), nullable=False)
     certificate = Column(String(2048), nullable=False)
+
+
+class AcmeAccount(Base):
+    __tablename__ = "acme_account"
+
+    id = Column(Integer, primary_key=True)
+    email = Column(String(256), nullable=False)
+    private_key = Column(Text, nullable=False)
+    account_url = Column(String(512), nullable=True)
+
+
+class Certificate(Base):
+    __tablename__ = "certificates"
+
+    id = Column(Integer, primary_key=True)
+    domain = Column(String(256), unique=True, nullable=False, index=True)
+    certificate = Column(Text, nullable=True)
+    private_key = Column(Text, nullable=True)
+    inbound_tags = Column(JSON, nullable=False, default=list)
+    auto_renew = Column(Boolean, nullable=False, default=True)
+    status = Column(String(32), nullable=False, default="pending")
+    last_error = Column(String(1024), nullable=True)
+    issued_at = Column(DateTime, nullable=True)
+    expires_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
 
 
 class Node(Base):

@@ -13,8 +13,10 @@ from sqlalchemy.sql.functions import coalesce
 from app.db.models import (
     JWT,
     TLS,
+    AcmeAccount,
     Admin,
     AdminUsageLogs,
+    Certificate,
     NextPlan,
     Node,
     NodeUsage,
@@ -899,6 +901,56 @@ def get_tls_certificate(db: Session) -> TLS:
         TLS: TLS certificate information.
     """
     return db.query(TLS).first()
+
+
+def get_acme_account(db: Session) -> Optional[AcmeAccount]:
+    """Retrieves the (single) registered ACME account, if any."""
+    return db.query(AcmeAccount).first()
+
+
+def create_acme_account(db: Session, email: str, private_key: str, account_url: Optional[str] = None) -> AcmeAccount:
+    """Creates and persists the ACME account."""
+    account = AcmeAccount(email=email, private_key=private_key, account_url=account_url)
+    db.add(account)
+    db.commit()
+    db.refresh(account)
+    return account
+
+
+def get_certificates(db: Session) -> List[Certificate]:
+    """Retrieves all managed Let's Encrypt certificates."""
+    return db.query(Certificate).order_by(Certificate.domain).all()
+
+
+def get_certificate(db: Session, domain: str) -> Optional[Certificate]:
+    """Retrieves a managed certificate by domain."""
+    return db.query(Certificate).filter(Certificate.domain == domain).first()
+
+
+def get_certificate_by_id(db: Session, cert_id: int) -> Optional[Certificate]:
+    """Retrieves a managed certificate by id."""
+    return db.query(Certificate).filter(Certificate.id == cert_id).first()
+
+
+def upsert_certificate(db: Session, domain: str, inbound_tags: List[str], auto_renew: bool) -> Certificate:
+    """Creates a certificate record for a domain, or updates its desired
+    settings (inbound tags / auto-renew) if one already exists."""
+    cert = get_certificate(db, domain)
+    if cert is None:
+        cert = Certificate(domain=domain, status="pending")
+        db.add(cert)
+
+    cert.inbound_tags = inbound_tags
+    cert.auto_renew = auto_renew
+    db.commit()
+    db.refresh(cert)
+    return cert
+
+
+def delete_certificate(db: Session, cert: Certificate):
+    """Deletes a managed certificate record."""
+    db.delete(cert)
+    db.commit()
 
 
 def get_admin(db: Session, username: str) -> Admin:

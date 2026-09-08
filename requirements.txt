@@ -6,6 +6,7 @@ PyJWT==2.8.0
 PyMySQL==1.1.1
 PyYAML==6.0.2
 SQLAlchemy==2.0.36
+acme==3.1.0
 alembic==1.14.0
 anyio==4.2.0
 bcrypt==4.0.1
@@ -19,6 +20,7 @@ grpcio-tools==1.67.1
 grpcio==1.67.1
 httptools==0.6.4
 jdatetime==4.1.1
+josepy==1.15.0
 passlib==1.7.4
 psutil==5.9.4
 pyOpenSSL==24.2.1
