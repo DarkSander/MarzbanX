@@ -1,4 +1,5 @@
 import atexit
+import os
 import re
 import subprocess
 import threading
@@ -26,6 +27,7 @@ class XRayCore:
         self._on_start_funcs = []
         self._on_stop_funcs = []
         self._env = {
+            **os.environ,
             "XRAY_LOCATION_ASSET": assets_path
         }
 
