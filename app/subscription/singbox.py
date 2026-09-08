@@ -20,6 +20,8 @@ class SingBoxConfiguration(str):
     def __init__(self):
         self.proxy_remarks = []
         self.config = json.loads(render_template(SINGBOX_SUBSCRIPTION_TEMPLATE))
+        if "endpoints" not in self.config:
+            self.config["endpoints"] = []
         self.mux_template = render_template(MUX_TEMPLATE)
         user_agent_data = json.loads(render_template(USER_AGENT_TEMPLATE))
 
@@ -48,13 +50,23 @@ class SingBoxConfiguration(str):
     def add_outbound(self, outbound_data):
         self.config["outbounds"].append(outbound_data)
 
+    def add_endpoint(self, endpoint_data):
+        self.config["endpoints"].append(endpoint_data)
+
     def render(self, reverse=False):
-        urltest_types = ["vmess", "vless", "trojan", "shadowsocks"]
+        urltest_types = ["vmess", "vless", "trojan", "shadowsocks", "hysteria2"]
         urltest_tags = [outbound["tag"]
                         for outbound in self.config["outbounds"] if outbound["type"] in urltest_types]
-        selector_types = ["vmess", "vless", "trojan", "shadowsocks", "urltest"]
+        # WireGuard has no "outbound" of its own in sing-box >= 1.11, it's
+        # configured as an "endpoint" instead, but can still be selected the
+        # same way as any regular outbound.
+        urltest_tags += [endpoint["tag"] for endpoint in self.config["endpoints"]
+                         if endpoint["type"] == "wireguard"]
+        selector_types = urltest_types + ["urltest"]
         selector_tags = [outbound["tag"]
                          for outbound in self.config["outbounds"] if outbound["type"] in selector_types]
+        selector_tags += [endpoint["tag"] for endpoint in self.config["endpoints"]
+                          if endpoint["type"] == "wireguard"]
 
         for outbound in self.config["outbounds"]:
             if outbound.get("type") == "urltest":
@@ -66,6 +78,9 @@ class SingBoxConfiguration(str):
 
         if reverse:
             self.config["outbounds"].reverse()
+            self.config["endpoints"].reverse()
+        if not self.config["endpoints"]:
+            del self.config["endpoints"]
         return json.dumps(self.config, indent=4,cls=UUIDEncoder)
 
     @staticmethod
@@ -285,6 +300,31 @@ class SingBoxConfiguration(str):
 
     def add(self, remark: str, address: str, inbound: dict, settings: dict):
 
+        if inbound['protocol'] == 'hysteria':
+            outbound = self.make_hysteria2_outbound(
+                remark=remark,
+                address=address,
+                port=inbound['port'],
+                password=settings['password'],
+                sni=inbound.get('sni', ''),
+                ais=inbound.get('ais', ''),
+            )
+            self.add_outbound(outbound)
+            return
+
+        if inbound['protocol'] == 'wireguard':
+            endpoint = self.make_wireguard_endpoint(
+                remark=remark,
+                address=address,
+                port=inbound['port'],
+                private_key=settings['private_key'],
+                client_address=settings.get('_wg_address', ''),
+                server_pubkey=inbound.get('wg_pubkey', ''),
+                mtu=inbound.get('wg_mtu', 1420),
+            )
+            self.add_endpoint(endpoint)
+            return
+
         net = inbound["network"]
         path = inbound["path"]
 
@@ -334,3 +374,45 @@ class SingBoxConfiguration(str):
             outbound['method'] = settings['method']
 
         self.add_outbound(outbound)
+
+    def make_hysteria2_outbound(self, remark: str, address: str, port: int,
+                                password: str, sni: str = '', ais: str = ''):
+        remark = self._remark_validation(remark)
+        self.proxy_remarks.append(remark)
+
+        outbound = {
+            "type": "hysteria2",
+            "tag": remark,
+            "server": address,
+            "server_port": port,
+            "password": password,
+        }
+        if sni:
+            # Hysteria2 doesn't support "multiplex" (it already multiplexes
+            # over QUIC natively) or uTLS/REALITY, unlike other protocols.
+            outbound["tls"] = self.tls_config(sni=sni, tls='tls', ais=ais)
+            outbound["tls"]["enabled"] = True
+
+        return outbound
+
+    def make_wireguard_endpoint(self, remark: str, address: str, port: int,
+                                private_key: str, client_address: str = '',
+                                server_pubkey: str = '', mtu: int = 1420):
+        remark = self._remark_validation(remark)
+        self.proxy_remarks.append(remark)
+
+        return {
+            "type": "wireguard",
+            "tag": remark,
+            "address": [f"{client_address}/32"] if client_address else [],
+            "private_key": private_key,
+            "mtu": mtu,
+            "peers": [
+                {
+                    "address": address,
+                    "port": port,
+                    "public_key": server_pubkey,
+                    "allowed_ips": ["0.0.0.0/0", "::/0"],
+                }
+            ],
+        }
