@@ -8,6 +8,7 @@ class CertificateRequest(BaseModel):
     domain: str
     inbound_tags: List[str] = Field(default_factory=list)
     auto_renew: bool = True
+    apply_to_panel: bool = False
 
 
 class CertificateResponse(BaseModel):
@@ -15,11 +16,14 @@ class CertificateResponse(BaseModel):
     domain: str
     inbound_tags: List[str]
     auto_renew: bool
+    apply_to_panel: bool
     status: str
     last_error: Optional[str] = None
     issued_at: Optional[datetime] = None
     expires_at: Optional[datetime] = None
     days_remaining: Optional[int] = None
+    panel_cert_file: Optional[str] = None
+    panel_key_file: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 

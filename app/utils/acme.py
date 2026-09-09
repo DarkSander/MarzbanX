@@ -1,4 +1,7 @@
 import json
+import os
+import stat
+import threading
 import time
 from datetime import datetime, timedelta
 
@@ -15,6 +18,7 @@ from app.utils.cloudflare import CloudflareError, create_txt_record, delete_txt_
 from config import ACME_DIRECTORY_URL, ACME_EMAIL, CLOUDFLARE_API_TOKEN
 
 USER_AGENT = "MarzbanX-ACME/1.0"
+PANEL_CERTS_DIR = "/var/lib/marzban/certs"
 ACCOUNT_KEY_SIZE = 2048
 CERT_KEY_SIZE = 2048
 DNS_PROPAGATION_TIMEOUT = 180
@@ -228,14 +232,66 @@ def apply_certificate_to_xray(domain: str, certificate_pem: str, private_key_pem
     xray.hosts.update()
 
 
-def issue_and_store_certificate(domain: str, inbound_tags: list, auto_renew: bool) -> "Certificate":
+def panel_cert_paths(domain: str) -> tuple:
+    """The fixed per-domain path a panel certificate is written to, matching
+    the layout .env.example documents for UVICORN_SSL_CERTFILE/KEYFILE."""
+    cert_dir = os.path.join(PANEL_CERTS_DIR, domain)
+    return os.path.join(cert_dir, "fullchain.pem"), os.path.join(cert_dir, "key.pem")
+
+
+def apply_certificate_to_panel(domain: str, certificate_pem: str, private_key_pem: str):
+    """Writes the certificate/key to panel_cert_paths(domain) so the admin
+    can point UVICORN_SSL_CERTFILE/UVICORN_SSL_KEYFILE at it. uvicorn only
+    reads those files once at startup, so if the panel is already
+    configured to use this exact path, this also restarts the process
+    (the container/service's restart policy brings it back up within a
+    couple seconds) so a renewed certificate actually gets loaded.
+    """
+    cert_path, key_path = panel_cert_paths(domain)
+    os.makedirs(os.path.dirname(cert_path), exist_ok=True)
+
+    with open(cert_path, "w") as f:
+        f.write(certificate_pem)
+    with open(key_path, "w") as f:
+        f.write(private_key_pem)
+    os.chmod(key_path, stat.S_IRUSR | stat.S_IWUSR)
+
+    from config import UVICORN_SSL_CERTFILE, UVICORN_SSL_KEYFILE
+    already_active = bool(
+        UVICORN_SSL_CERTFILE and UVICORN_SSL_KEYFILE
+        and os.path.abspath(UVICORN_SSL_CERTFILE) == os.path.abspath(cert_path)
+        and os.path.abspath(UVICORN_SSL_KEYFILE) == os.path.abspath(key_path)
+    )
+    if already_active:
+        logger.warning(
+            f'Panel certificate for "{domain}" renewed; restarting the process '
+            f'so it gets picked up'
+        )
+
+        def _restart():
+            time.sleep(2)
+            os._exit(0)
+
+        threading.Thread(target=_restart, daemon=True).start()
+    else:
+        logger.info(
+            f'Panel certificate for "{domain}" written to {cert_path}. Set '
+            f'UVICORN_SSL_CERTFILE={cert_path} and UVICORN_SSL_KEYFILE={key_path} '
+            f'in .env and restart once to serve the panel over HTTPS.'
+        )
+
+
+def issue_and_store_certificate(
+    domain: str, inbound_tags: list, auto_renew: bool, apply_to_panel: bool = False
+) -> "Certificate":
     """High-level entry point used by the router and the renewal job:
     issues the certificate, persists it, and (if requested) applies it to
-    the selected Xray inbounds. Persists failure status/message on error
-    instead of raising, so callers running in the background can just log.
+    the selected Xray inbounds and/or the panel itself. Persists failure
+    status/message on error instead of raising, so callers running in the
+    background can just log.
     """
     with GetDB() as db:
-        cert = crud.upsert_certificate(db, domain, inbound_tags, auto_renew)
+        cert = crud.upsert_certificate(db, domain, inbound_tags, auto_renew, apply_to_panel)
         cert_id = cert.id
 
     try:
@@ -259,10 +315,14 @@ def issue_and_store_certificate(domain: str, inbound_tags: list, auto_renew: boo
         cert.last_error = None
         db.commit()
         db.refresh(cert)
-        domain_, cert_pem, key_pem, tags = cert.domain, cert.certificate, cert.private_key, cert.inbound_tags
+        domain_, cert_pem, key_pem, tags, apply_panel = (
+            cert.domain, cert.certificate, cert.private_key, cert.inbound_tags, cert.apply_to_panel
+        )
 
     if tags:
         apply_certificate_to_xray(domain_, cert_pem, key_pem, tags)
+    if apply_panel:
+        apply_certificate_to_panel(domain_, cert_pem, key_pem)
 
     logger.info(f'Certificate issued for "{domain}", expires {result["expires_at"]}')
     return cert

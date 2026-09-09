@@ -57,6 +57,7 @@ import {
   generateSuccessMessage,
 } from "utils/toastHandler";
 import { chakra } from "@chakra-ui/react";
+import { CopyField } from "./CopyField";
 import { DeleteCertificateModal } from "./DeleteCertificateModal";
 import { DeleteIcon } from "./DeleteUserModal";
 import { Icon } from "./Icon";
@@ -191,6 +192,15 @@ const CertificateAccordion: FC<{ cert: CertificateType }> = ({ cert }) => {
               ))}
             </Wrap>
           )}
+          {cert.apply_to_panel && cert.panel_cert_file && cert.panel_key_file && (
+            <VStack w="full" alignItems="flex-start" gap={1}>
+              <Text color="gray.600" _dark={{ color: "gray.400" }}>
+                {t("certificates.panelHint")}
+              </Text>
+              <CopyField label="UVICORN_SSL_CERTFILE" value={cert.panel_cert_file} />
+              <CopyField label="UVICORN_SSL_KEYFILE" value={cert.panel_key_file} />
+            </VStack>
+          )}
           <HStack w="full" pt={1}>
             <Tooltip label={t("delete")} placement="top">
               <IconButton
@@ -312,7 +322,7 @@ const RequestCertificateForm: FC = () => {
 
   const form = useForm<CertificateFormType>({
     resolver: zodResolver(CertificateSchema),
-    defaultValues: { domain: "", inbound_tags: [], auto_renew: true },
+    defaultValues: { domain: "", inbound_tags: [], auto_renew: true, apply_to_panel: false },
   });
 
   const { isLoading, mutate } = useMutation(requestCertificate, {
@@ -378,6 +388,28 @@ const RequestCertificateForm: FC = () => {
               />
             )}
           />
+        </FormControl>
+
+        <FormControl>
+          <HStack alignItems="center">
+            <FormLabel fontSize="sm" mb="0">
+              {t("certificates.applyToPanel")}
+            </FormLabel>
+            <Controller
+              name="apply_to_panel"
+              control={form.control}
+              render={({ field }) => (
+                <Switch
+                  colorScheme="primary"
+                  isChecked={field.value}
+                  onChange={(e) => field.onChange(e.target.checked)}
+                />
+              )}
+            />
+          </HStack>
+          <Text fontSize="xs" opacity={0.7} mt={1}>
+            {t("certificates.applyToPanelHint")}
+          </Text>
         </FormControl>
 
         <Button

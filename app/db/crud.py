@@ -963,9 +963,12 @@ def get_certificate_by_id(db: Session, cert_id: int) -> Optional[Certificate]:
     return db.query(Certificate).filter(Certificate.id == cert_id).first()
 
 
-def upsert_certificate(db: Session, domain: str, inbound_tags: List[str], auto_renew: bool) -> Certificate:
+def upsert_certificate(
+    db: Session, domain: str, inbound_tags: List[str], auto_renew: bool, apply_to_panel: bool = False
+) -> Certificate:
     """Creates a certificate record for a domain, or updates its desired
-    settings (inbound tags / auto-renew) if one already exists."""
+    settings (inbound tags / auto-renew / apply-to-panel) if one already
+    exists."""
     cert = get_certificate(db, domain)
     if cert is None:
         cert = Certificate(domain=domain, status="pending")
@@ -973,6 +976,7 @@ def upsert_certificate(db: Session, domain: str, inbound_tags: List[str], auto_r
 
     cert.inbound_tags = inbound_tags
     cert.auto_renew = auto_renew
+    cert.apply_to_panel = apply_to_panel
     db.commit()
     db.refresh(cert)
     return cert

@@ -319,6 +319,7 @@ class Certificate(Base):
     private_key = Column(Text, nullable=True)
     inbound_tags = Column(JSON, nullable=False, default=list)
     auto_renew = Column(Boolean, nullable=False, default=True)
+    apply_to_panel = Column(Boolean, nullable=False, default=False)
     status = Column(String(32), nullable=False, default="pending")
     last_error = Column(String(1024), nullable=True)
     issued_at = Column(DateTime, nullable=True)

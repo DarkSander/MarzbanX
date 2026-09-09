@@ -14,7 +14,7 @@ from app.models.certificate import (
     CertificateResponse,
 )
 from app.utils import responses
-from app.utils.acme import AcmeError, issue_and_store_certificate
+from app.utils.acme import AcmeError, issue_and_store_certificate, panel_cert_paths
 from app.utils.cloudflare import CloudflareError
 from config import ACME_DIRECTORY_URL, ACME_EMAIL, CLOUDFLARE_API_TOKEN
 
@@ -28,22 +28,29 @@ def _to_response(cert: DBCertificate) -> CertificateResponse:
     if cert.expires_at:
         days_remaining = (cert.expires_at - datetime.utcnow()).days
 
+    panel_cert_file = panel_key_file = None
+    if cert.apply_to_panel:
+        panel_cert_file, panel_key_file = panel_cert_paths(cert.domain)
+
     return CertificateResponse(
         id=cert.id,
         domain=cert.domain,
         inbound_tags=cert.inbound_tags or [],
         auto_renew=cert.auto_renew,
+        apply_to_panel=cert.apply_to_panel,
         status=cert.status,
         last_error=cert.last_error,
         issued_at=cert.issued_at,
         expires_at=cert.expires_at,
         days_remaining=days_remaining,
+        panel_cert_file=panel_cert_file,
+        panel_key_file=panel_key_file,
     )
 
 
-def _run_issuance(domain: str, inbound_tags: List[str], auto_renew: bool):
+def _run_issuance(domain: str, inbound_tags: List[str], auto_renew: bool, apply_to_panel: bool):
     try:
-        issue_and_store_certificate(domain, inbound_tags, auto_renew)
+        issue_and_store_certificate(domain, inbound_tags, auto_renew, apply_to_panel)
     except (AcmeError, CloudflareError):
         pass  # already logged and persisted by issue_and_store_certificate
 
@@ -101,8 +108,12 @@ def request_certificate(
         if tag not in xray.config.inbounds_by_tag:
             raise HTTPException(status_code=400, detail=f'Inbound "{tag}" does not exist')
 
-    cert = crud.upsert_certificate(db, payload.domain, payload.inbound_tags, payload.auto_renew)
-    background_tasks.add_task(_run_issuance, payload.domain, payload.inbound_tags, payload.auto_renew)
+    cert = crud.upsert_certificate(
+        db, payload.domain, payload.inbound_tags, payload.auto_renew, payload.apply_to_panel
+    )
+    background_tasks.add_task(
+        _run_issuance, payload.domain, payload.inbound_tags, payload.auto_renew, payload.apply_to_panel
+    )
     return _to_response(cert)
 
 
@@ -122,7 +133,9 @@ def reissue_certificate(
     db.commit()
     db.refresh(cert)
 
-    background_tasks.add_task(_run_issuance, cert.domain, cert.inbound_tags or [], cert.auto_renew)
+    background_tasks.add_task(
+        _run_issuance, cert.domain, cert.inbound_tags or [], cert.auto_renew, cert.apply_to_panel
+    )
     return _to_response(cert)
 
 

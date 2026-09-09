@@ -8,6 +8,7 @@ export const CertificateSchema = z.object({
   domain: z.string().min(1),
   inbound_tags: z.array(z.string()).default([]),
   auto_renew: z.boolean().default(true),
+  apply_to_panel: z.boolean().default(false),
 });
 
 export type CertificateFormType = z.infer<typeof CertificateSchema>;
@@ -17,11 +18,14 @@ export type CertificateType = {
   domain: string;
   inbound_tags: string[];
   auto_renew: boolean;
+  apply_to_panel: boolean;
   status: "pending" | "issued" | "error";
   last_error: string | null;
   issued_at: string | null;
   expires_at: string | null;
   days_remaining: number | null;
+  panel_cert_file: string | null;
+  panel_key_file: string | null;
 };
 
 export const FetchCertificatesQueryKey = "fetch-certificates-query-key";
