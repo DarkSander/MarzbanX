@@ -44,7 +44,9 @@ import { JsonEditor } from "./JsonEditor";
 import "./JsonEditor/themes.js";
 import { useNodesQuery } from "contexts/NodesContext";
 import { RealityKeysButton } from "./RealityKeysModal";
+import { SelfSignedCertButton } from "./SelfSignedCertModal";
 import { VlessEncButton } from "./VlessEncModal";
+import { WireGuardKeyButton } from "./WireGuardKeyModal";
 
 export const MAX_NUMBER_OF_LOGS = 500;
 
@@ -250,6 +252,8 @@ const CoreSettingModalContent: FC = () => {
             <HStack gap={2}>
               <RealityKeysButton />
               <VlessEncButton />
+              <WireGuardKeyButton />
+              <SelfSignedCertButton />
               <Tooltip label="Xray Version" placement="top">
                 <Badge height="100%" textTransform="lowercase">
                   {version && `v${version}`}

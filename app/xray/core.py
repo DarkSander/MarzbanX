@@ -1,4 +1,5 @@
 import atexit
+import json
 import os
 import re
 import subprocess
@@ -40,13 +41,14 @@ class XRayCore:
         if m:
             return m.groups()[0]
 
-    def get_x25519(self, private_key: str = None):
-        cmd = [self.executable_path, "x25519"]
+    def _run_keypair_cmd(self, subcommand: str, private_key: str = None):
+        cmd = [self.executable_path, subcommand]
         if private_key:
             cmd.extend(['-i', private_key])
         output = subprocess.check_output(cmd, stderr=subprocess.STDOUT).decode('utf-8')
         # Xray-core >= v25 renamed the CLI labels from "Private key"/"Public key"
-        # to "PrivateKey"/"Password (PublicKey)"; match both formats.
+        # to "PrivateKey"/"Password (PublicKey)"; match both formats. Used by
+        # x25519 (REALITY/VLESS Encryption) and wg (WireGuard) alike.
         private_match = re.search(r'Private ?[Kk]ey:\s*(\S+)', output)
         public_match = re.search(r'Public ?[Kk]ey\)?:\s*(\S+)', output)
         if private_match and public_match:
@@ -55,18 +57,53 @@ class XRayCore:
                 "public_key": public_match.group(1)
             }
 
+    def get_x25519(self, private_key: str = None):
+        return self._run_keypair_cmd("x25519", private_key)
+
+    def get_wg_key(self, private_key: str = None):
+        return self._run_keypair_cmd("wg", private_key)
+
+    def get_mldsa65(self, seed: str = None):
+        cmd = [self.executable_path, "mldsa65"]
+        if seed:
+            cmd.extend(['-i', seed])
+        output = subprocess.check_output(cmd, stderr=subprocess.STDOUT).decode('utf-8')
+        seed_match = re.search(r'Seed:\s*(\S+)', output)
+        verify_match = re.search(r'Verify:\s*(\S+)', output)
+        if seed_match and verify_match:
+            return {
+                "seed": seed_match.group(1),
+                "verify": verify_match.group(1)
+            }
+
     def get_reality_keys(self, short_id_count: int = 3):
         x25519 = self.get_x25519()
         if not x25519:
             return None
 
-        return {
+        result = {
             "private_key": x25519["private_key"],
             "public_key": x25519["public_key"],
             # REALITY shortIds are arbitrary even-length hex strings of up
             # to 8 bytes; 8 bytes (16 hex chars) matches Xray-core's own
             # example configs.
             "short_ids": [os.urandom(8).hex() for _ in range(short_id_count)],
+        }
+
+        mldsa65 = self.get_mldsa65()
+        if mldsa65:
+            result["mldsa65_seed"] = mldsa65["seed"]
+            result["mldsa65_verify"] = mldsa65["verify"]
+
+        return result
+
+    def get_self_signed_cert(self, domain: str, expire: str = "8760h"):
+        cmd = [self.executable_path, "tls", "cert", f"--domain={domain}", f"--expire={expire}"]
+        output = subprocess.check_output(cmd, stderr=subprocess.STDOUT).decode('utf-8')
+        data = json.loads(output)
+        return {
+            "certificate": data["certificate"],
+            "key": data["key"],
         }
 
     def get_vlessenc(self):

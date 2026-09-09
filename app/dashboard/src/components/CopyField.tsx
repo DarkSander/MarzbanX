@@ -11,15 +11,21 @@ const CopiedIcon = chakra(CheckIcon, {
   baseStyle: { w: 4, h: 4 },
 });
 
-export const CopyField: FC<{ label: string; value: string }> = ({ label, value }) => {
+export const CopyField: FC<{ label: string; value: string; maxHeight?: string }> = ({
+  label,
+  value,
+  maxHeight,
+}) => {
   const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
 
   return (
     <Box w="full">
-      <Text fontSize="xs" fontWeight="medium" color="gray.600" _dark={{ color: "gray.400" }} mb={1}>
-        {label}
-      </Text>
+      {label && (
+        <Text fontSize="xs" fontWeight="medium" color="gray.600" _dark={{ color: "gray.400" }} mb={1}>
+          {label}
+        </Text>
+      )}
       <HStack
         border="1px solid"
         borderColor="gray.200"
@@ -32,9 +38,12 @@ export const CopyField: FC<{ label: string; value: string }> = ({ label, value }
         <Text
           fontSize="xs"
           fontFamily="mono"
+          whiteSpace="pre-wrap"
           wordBreak="break-all"
           flex="1"
           userSelect="all"
+          maxHeight={maxHeight}
+          overflowY={maxHeight ? "auto" : undefined}
         >
           {value}
         </Text>

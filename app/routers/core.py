@@ -101,6 +101,24 @@ def generate_reality_keys(count: int = 3, admin: Admin = Depends(Admin.check_sud
     return xray.core.get_reality_keys(short_id_count=count)
 
 
+@router.get("/core/wireguard", responses={403: responses._403})
+def generate_wireguard_server_key(admin: Admin = Depends(Admin.check_sudo_admin)) -> dict:
+    """Generate a fresh WireGuard key pair, for a new inbound's secretKey."""
+    return xray.core.get_wg_key()
+
+
+@router.get("/core/self-signed-cert", responses={403: responses._403})
+def generate_self_signed_certificate(
+    domain: str, admin: Admin = Depends(Admin.check_sudo_admin)
+) -> dict:
+    """Generate a self-signed TLS certificate/key pair for `domain`, for
+    quick local testing of TLS-based inbounds (not for production use --
+    see the Certificates panel for real Let's Encrypt certificates)."""
+    if not domain:
+        raise HTTPException(status_code=400, detail="domain is required")
+    return xray.core.get_self_signed_cert(domain)
+
+
 @router.post("/core/restart", responses={403: responses._403})
 def restart_core(admin: Admin = Depends(Admin.check_sudo_admin)):
     """Restart the core and all connected nodes."""

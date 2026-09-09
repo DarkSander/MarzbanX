@@ -1,7 +1,6 @@
 import {
   Button,
   chakra,
-  Divider,
   HStack,
   IconButton,
   Modal,
@@ -16,30 +15,30 @@ import {
   useDisclosure,
   VStack,
 } from "@chakra-ui/react";
-import { ArrowPathIcon, ShieldCheckIcon } from "@heroicons/react/24/outline";
-import { RealityKeys, useCoreSettings } from "contexts/CoreSettingsContext";
+import { ArrowPathIcon, GlobeAltIcon } from "@heroicons/react/24/outline";
+import { useCoreSettings, WireGuardKeyPair } from "contexts/CoreSettingsContext";
 import { FC, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { CopyField } from "./CopyField";
 import { Icon } from "./Icon";
 
-const ModalIcon = chakra(ShieldCheckIcon, {
+const ModalIcon = chakra(GlobeAltIcon, {
   baseStyle: { w: 5, h: 5 },
 });
 const ReloadIcon = chakra(ArrowPathIcon, {
   baseStyle: { w: 4, h: 4 },
 });
 
-export const RealityKeysButton: FC = () => {
+export const WireGuardKeyButton: FC = () => {
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const { generateRealityKeys } = useCoreSettings();
+  const { generateWireGuardKeys } = useCoreSettings();
   const { t } = useTranslation();
-  const [keys, setKeys] = useState<RealityKeys | null>(null);
+  const [keys, setKeys] = useState<WireGuardKeyPair | null>(null);
   const [isLoading, setLoading] = useState(false);
 
   const generate = () => {
     setLoading(true);
-    generateRealityKeys(3)
+    generateWireGuardKeys()
       .then(setKeys)
       .finally(() => setLoading(false));
   };
@@ -51,11 +50,11 @@ export const RealityKeysButton: FC = () => {
 
   return (
     <>
-      <Tooltip label={t("realityKeys.generate")} placement="top">
+      <Tooltip label={t("wireguardKey.generate")} placement="top">
         <IconButton
           size="sm"
           variant="outline"
-          aria-label="generate reality keys"
+          aria-label="generate wireguard server key"
           onClick={handleOpen}
         >
           <ModalIcon />
@@ -70,14 +69,14 @@ export const RealityKeysButton: FC = () => {
                 <ModalIcon color="white" />
               </Icon>
               <Text fontWeight="semibold" fontSize="lg">
-                {t("realityKeys.title")}
+                {t("wireguardKey.title")}
               </Text>
             </HStack>
           </ModalHeader>
           <ModalCloseButton mt={3} />
           <ModalBody pb={6}>
             <Text fontSize="sm" opacity={0.8} mb={4}>
-              {t("realityKeys.description")}
+              {t("wireguardKey.description")}
             </Text>
             {isLoading && (
               <HStack justifyContent="center" py={6}>
@@ -86,40 +85,15 @@ export const RealityKeysButton: FC = () => {
             )}
             {!isLoading && keys && (
               <VStack gap={4} alignItems="flex-start">
-                <CopyField label={t("realityKeys.privateKey")} value={keys.private_key} />
-                <CopyField label={t("realityKeys.publicKey")} value={keys.public_key} />
-                <Text fontSize="xs" fontWeight="medium" color="gray.600" _dark={{ color: "gray.400" }}>
-                  {t("realityKeys.shortIds")}
-                </Text>
-                <VStack w="full" gap={2}>
-                  {keys.short_ids.map((sid, i) => (
-                    <CopyField
-                      key={sid}
-                      label={`${t("realityKeys.shortId")} ${i + 1}`}
-                      value={sid}
-                    />
-                  ))}
-                </VStack>
-                {keys.mldsa65_seed && keys.mldsa65_verify && (
-                  <>
-                    <Divider />
-                    <Text fontWeight="semibold" fontSize="sm">
-                      {t("realityKeys.mldsa65")}
-                    </Text>
-                    <Text fontSize="xs" opacity={0.7}>
-                      {t("realityKeys.mldsa65Desc")}
-                    </Text>
-                    <CopyField label={t("realityKeys.mldsa65Seed")} value={keys.mldsa65_seed} />
-                    <CopyField label={t("realityKeys.mldsa65Verify")} value={keys.mldsa65_verify} />
-                  </>
-                )}
+                <CopyField label={t("wireguardKey.privateKey")} value={keys.private_key} />
+                <CopyField label={t("wireguardKey.publicKey")} value={keys.public_key} />
                 <Button
                   size="sm"
                   w="full"
                   leftIcon={<ReloadIcon />}
                   onClick={generate}
                 >
-                  {t("realityKeys.regenerate")}
+                  {t("wireguardKey.regenerate")}
                 </Button>
               </VStack>
             )}

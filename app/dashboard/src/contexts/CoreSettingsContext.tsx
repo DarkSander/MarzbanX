@@ -15,6 +15,18 @@ export type RealityKeys = {
   private_key: string;
   public_key: string;
   short_ids: string[];
+  mldsa65_seed?: string;
+  mldsa65_verify?: string;
+};
+
+export type WireGuardKeyPair = {
+  private_key: string;
+  public_key: string;
+};
+
+export type SelfSignedCert = {
+  certificate: string[];
+  key: string[];
 };
 
 type CoreSettingsStore = {
@@ -25,6 +37,8 @@ type CoreSettingsStore = {
   restartCore: () => Promise<void>;
   generateVlessEncKeys: () => Promise<VlessEncKeys>;
   generateRealityKeys: (count?: number) => Promise<RealityKeys>;
+  generateWireGuardKeys: () => Promise<WireGuardKeyPair>;
+  generateSelfSignedCert: (domain: string) => Promise<SelfSignedCert>;
   version: string | null;
   started: boolean | null;
   logs_websocket: string | null;
@@ -61,5 +75,11 @@ export const useCoreSettings = create<CoreSettingsStore>((set) => ({
   },
   generateRealityKeys: (count = 3) => {
     return fetch("/core/reality", { query: { count } });
+  },
+  generateWireGuardKeys: () => {
+    return fetch("/core/wireguard");
+  },
+  generateSelfSignedCert: (domain: string) => {
+    return fetch("/core/self-signed-cert", { query: { domain } });
   },
 }));
