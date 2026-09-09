@@ -160,3 +160,7 @@ xray-core
 *-dev.yml
 *-dev.yaml
 *-debug.*
+
+# dashboard is now built inside the Dockerfile's frontend stage; the
+# checked-in output went stale and shipped an outdated UI in docker builds
+app/dashboard/build
