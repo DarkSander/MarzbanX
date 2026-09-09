@@ -92,6 +92,15 @@ def generate_vless_encryption_keys(admin: Admin = Depends(Admin.check_sudo_admin
     return xray.core.get_vlessenc()
 
 
+@router.get("/core/reality", responses={403: responses._403})
+def generate_reality_keys(count: int = 3, admin: Admin = Depends(Admin.check_sudo_admin)) -> dict:
+    """Generate a fresh REALITY private/public key pair and a batch of
+    random shortIds."""
+    if count < 1 or count > 20:
+        raise HTTPException(status_code=400, detail="count must be between 1 and 20")
+    return xray.core.get_reality_keys(short_id_count=count)
+
+
 @router.post("/core/restart", responses={403: responses._403})
 def restart_core(admin: Admin = Depends(Admin.check_sudo_admin)):
     """Restart the core and all connected nodes."""

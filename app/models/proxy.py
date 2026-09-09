@@ -242,3 +242,4 @@ class ProxyInbound(BaseModel):
     network: str
     tls: str
     port: Union[int, str]
+    encryption: Optional[str] = None

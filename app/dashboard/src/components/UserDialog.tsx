@@ -54,6 +54,7 @@ import {
 } from "types/User";
 import { relativeExpiryDate } from "utils/dateFormatter";
 import { z } from "zod";
+import { CopyField } from "./CopyField";
 import { DeleteIcon } from "./DeleteUserModal";
 import { Icon } from "./Icon";
 import { Input } from "./Input";
@@ -226,6 +227,7 @@ export const UserDialog: FC<UserDialogProps> = () => {
     onEditingUser,
     createUser,
     onDeletingUser,
+    inbounds,
   } = useDashboard();
   const isEditing = !!editingUser;
   const isOpen = isCreatingNewUser || isEditing;
@@ -257,10 +259,14 @@ export const UserDialog: FC<UserDialogProps> = () => {
     []
   );
 
-  const [dataLimit, userStatus] = useWatch({
+  const [dataLimit, userStatus, selectedProxies] = useWatch({
     control: form.control,
-    name: ["data_limit", "status"],
+    name: ["data_limit", "status", "selected_proxies"],
   });
+
+  const vlessEncryptionInbounds = selectedProxies?.includes("vless")
+    ? (inbounds.get("vless") || []).filter((inbound) => inbound.encryption)
+    : [];
 
   const usageTitle = t("userDialog.total");
   const [usage, setUsage] = useState(createUsageConfig(colorMode, usageTitle));
@@ -770,6 +776,20 @@ export const UserDialog: FC<UserDialogProps> = () => {
                       )}
                     </FormErrorMessage>
                   </FormControl>
+                  {vlessEncryptionInbounds.length > 0 && (
+                    <VStack mt={3} alignItems="flex-start" gap={2}>
+                      <Text fontSize="xs" opacity={0.8}>
+                        {t("userDialog.vlessEncryptionHint")}
+                      </Text>
+                      {vlessEncryptionInbounds.map((inbound) => (
+                        <CopyField
+                          key={inbound.tag}
+                          label={inbound.tag}
+                          value={inbound.encryption as string}
+                        />
+                      ))}
+                    </VStack>
+                  )}
                 </GridItem>
                 {isEditing && usageVisible && (
                   <GridItem pt={6} colSpan={{ base: 1, md: 2 }}>

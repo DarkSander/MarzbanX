@@ -218,8 +218,8 @@
   "usersTable.status": "状态",
   "usersTable.sortByExpire": "按过期时间排序",
   "usersTable.total": "总共",
-  "vlessEnc.copied": "已复制",
-  "vlessEnc.copy": "复制",
+  "copyField.copied": "已复制",
+  "copyField.copy": "复制",
   "vlessEnc.decryption": "Decryption（粘贴到入站的 settings 中）",
   "vlessEnc.description": "生成一对新的 VLESS Encryption 密钥。将 \"decryption\" 填入 VLESS 入站的 settings，将 \"encryption\" 分发给客户端（例如作为 vless:// 链接中的 encryption= 参数）。同一入站的所有客户端共用同一个 encryption 值。",
   "vlessEnc.encryption": "Encryption（分发给客户端）",
@@ -229,5 +229,14 @@
   "vlessEnc.regenerate": "重新生成",
   "vlessEnc.title": "VLESS Encryption 密钥",
   "vlessEnc.x25519": "X25519",
-  "vlessEnc.x25519Desc": "经典椭圆曲线算法，非抗量子。"
+  "vlessEnc.x25519Desc": "经典椭圆曲线算法，非抗量子。",
+  "realityKeys.description": "生成一对新的 REALITY 密钥和一批 shortId。将 \"privateKey\" 和 shortId 填入入站的 realitySettings；\"publicKey\" 会自动提供给客户端（设置 privateKey 后 Marzban 会自动推导并写入订阅链接）。",
+  "realityKeys.generate": "生成 REALITY 密钥",
+  "realityKeys.privateKey": "私钥（填入 realitySettings.privateKey）",
+  "realityKeys.publicKey": "公钥（仅供参考，客户端会自动获取）",
+  "realityKeys.regenerate": "重新生成",
+  "realityKeys.shortId": "Short ID",
+  "realityKeys.shortIds": "Short ID（填入 realitySettings.shortIds）",
+  "realityKeys.title": "REALITY 密钥",
+  "userDialog.vlessEncryptionHint": "该入站已启用 VLESS Encryption。客户端需要以下 encryption 值："
 }

@@ -217,8 +217,8 @@
   "usersTable.noUserMatched": "It seems there is no user matched with what you are looking for",
   "usersTable.status": "status",
   "usersTable.total": "Total",
-  "vlessEnc.copied": "Copied",
-  "vlessEnc.copy": "Copy",
+  "copyField.copied": "Copied",
+  "copyField.copy": "Copy",
   "vlessEnc.decryption": "Decryption (paste into the inbound's settings)",
   "vlessEnc.description": "Generates a fresh key pair for VLESS Encryption. Put \"decryption\" into the VLESS inbound's settings, and give \"encryption\" to your clients (e.g. as the encryption= parameter in their vless:// link). Every client of that inbound shares the same encryption value.",
   "vlessEnc.encryption": "Encryption (give to clients)",
@@ -228,5 +228,14 @@
   "vlessEnc.regenerate": "Generate new keys",
   "vlessEnc.title": "VLESS Encryption Keys",
   "vlessEnc.x25519": "X25519",
-  "vlessEnc.x25519Desc": "Classic elliptic-curve, not post-quantum."
+  "vlessEnc.x25519Desc": "Classic elliptic-curve, not post-quantum.",
+  "realityKeys.description": "Generates a fresh REALITY key pair and a batch of shortIds. Put \"privateKey\" and the shortIds into the inbound's realitySettings; \"publicKey\" goes to clients (Marzban derives and includes it in subscription links automatically once privateKey is set).",
+  "realityKeys.generate": "Generate REALITY keys",
+  "realityKeys.privateKey": "Private key (put in realitySettings.privateKey)",
+  "realityKeys.publicKey": "Public key (for reference, clients get this automatically)",
+  "realityKeys.regenerate": "Generate new keys",
+  "realityKeys.shortId": "Short ID",
+  "realityKeys.shortIds": "Short IDs (put in realitySettings.shortIds)",
+  "realityKeys.title": "REALITY Keys",
+  "userDialog.vlessEncryptionHint": "This inbound has VLESS Encryption enabled. Clients need this encryption value:"
 }

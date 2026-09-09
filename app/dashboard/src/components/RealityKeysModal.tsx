@@ -15,56 +15,30 @@ import {
   useDisclosure,
   VStack,
 } from "@chakra-ui/react";
-import { ArrowPathIcon, KeyIcon } from "@heroicons/react/24/outline";
-import {
-  useCoreSettings,
-  VlessEncKeyPair,
-  VlessEncKeys,
-} from "contexts/CoreSettingsContext";
+import { ArrowPathIcon, ShieldCheckIcon } from "@heroicons/react/24/outline";
+import { RealityKeys, useCoreSettings } from "contexts/CoreSettingsContext";
 import { FC, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { CopyField } from "./CopyField";
 import { Icon } from "./Icon";
 
-const ModalIcon = chakra(KeyIcon, {
+const ModalIcon = chakra(ShieldCheckIcon, {
   baseStyle: { w: 5, h: 5 },
 });
 const ReloadIcon = chakra(ArrowPathIcon, {
   baseStyle: { w: 4, h: 4 },
 });
 
-const KeyPairSection: FC<{ title: string; description: string; pair?: VlessEncKeyPair }> = ({
-  title,
-  description,
-  pair,
-}) => {
-  const { t } = useTranslation();
-  if (!pair) return null;
-
-  return (
-    <VStack alignItems="flex-start" w="full" gap={2}>
-      <Text fontWeight="semibold" fontSize="sm">
-        {title}
-      </Text>
-      <Text fontSize="xs" opacity={0.7}>
-        {description}
-      </Text>
-      <CopyField label={t("vlessEnc.decryption")} value={pair.decryption} />
-      <CopyField label={t("vlessEnc.encryption")} value={pair.encryption} />
-    </VStack>
-  );
-};
-
-export const VlessEncButton: FC = () => {
+export const RealityKeysButton: FC = () => {
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const { generateVlessEncKeys } = useCoreSettings();
+  const { generateRealityKeys } = useCoreSettings();
   const { t } = useTranslation();
-  const [keys, setKeys] = useState<VlessEncKeys | null>(null);
+  const [keys, setKeys] = useState<RealityKeys | null>(null);
   const [isLoading, setLoading] = useState(false);
 
   const generate = () => {
     setLoading(true);
-    generateVlessEncKeys()
+    generateRealityKeys(3)
       .then(setKeys)
       .finally(() => setLoading(false));
   };
@@ -76,11 +50,11 @@ export const VlessEncButton: FC = () => {
 
   return (
     <>
-      <Tooltip label={t("vlessEnc.generate")} placement="top">
+      <Tooltip label={t("realityKeys.generate")} placement="top">
         <IconButton
           size="sm"
           variant="outline"
-          aria-label="generate vless encryption keys"
+          aria-label="generate reality keys"
           onClick={handleOpen}
         >
           <ModalIcon />
@@ -95,14 +69,14 @@ export const VlessEncButton: FC = () => {
                 <ModalIcon color="white" />
               </Icon>
               <Text fontWeight="semibold" fontSize="lg">
-                {t("vlessEnc.title")}
+                {t("realityKeys.title")}
               </Text>
             </HStack>
           </ModalHeader>
           <ModalCloseButton mt={3} />
           <ModalBody pb={6}>
             <Text fontSize="sm" opacity={0.8} mb={4}>
-              {t("vlessEnc.description")}
+              {t("realityKeys.description")}
             </Text>
             {isLoading && (
               <HStack justifyContent="center" py={6}>
@@ -110,24 +84,28 @@ export const VlessEncButton: FC = () => {
               </HStack>
             )}
             {!isLoading && keys && (
-              <VStack gap={5} alignItems="flex-start">
-                <KeyPairSection
-                  title={t("vlessEnc.x25519")}
-                  description={t("vlessEnc.x25519Desc")}
-                  pair={keys.x25519}
-                />
-                <KeyPairSection
-                  title={t("vlessEnc.mlkem768")}
-                  description={t("vlessEnc.mlkem768Desc")}
-                  pair={keys.mlkem768}
-                />
+              <VStack gap={4} alignItems="flex-start">
+                <CopyField label={t("realityKeys.privateKey")} value={keys.private_key} />
+                <CopyField label={t("realityKeys.publicKey")} value={keys.public_key} />
+                <Text fontSize="xs" fontWeight="medium" color="gray.600" _dark={{ color: "gray.400" }}>
+                  {t("realityKeys.shortIds")}
+                </Text>
+                <VStack w="full" gap={2}>
+                  {keys.short_ids.map((sid, i) => (
+                    <CopyField
+                      key={sid}
+                      label={`${t("realityKeys.shortId")} ${i + 1}`}
+                      value={sid}
+                    />
+                  ))}
+                </VStack>
                 <Button
                   size="sm"
                   w="full"
                   leftIcon={<ReloadIcon />}
                   onClick={generate}
                 >
-                  {t("vlessEnc.regenerate")}
+                  {t("realityKeys.regenerate")}
                 </Button>
               </VStack>
             )}

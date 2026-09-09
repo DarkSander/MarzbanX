@@ -217,8 +217,8 @@
   "usersTable.noUserMatched": "Похоже, нет пользователя, соответствующего вашему запросу",
   "usersTable.status": "Статус",
   "usersTable.total": "Всего",
-  "vlessEnc.copied": "Скопировано",
-  "vlessEnc.copy": "Копировать",
+  "copyField.copied": "Скопировано",
+  "copyField.copy": "Копировать",
   "vlessEnc.decryption": "Decryption (вставить в settings инбаунда)",
   "vlessEnc.description": "Генерирует новую пару ключей для VLESS Encryption. \"decryption\" вставьте в settings VLESS-инбаунда, а \"encryption\" раздайте клиентам (например, как параметр encryption= в ссылке vless://). У всех клиентов одного инбаунда значение encryption общее.",
   "vlessEnc.encryption": "Encryption (для клиентов)",
@@ -228,5 +228,14 @@
   "vlessEnc.regenerate": "Сгенерировать заново",
   "vlessEnc.title": "Ключи VLESS Encryption",
   "vlessEnc.x25519": "X25519",
-  "vlessEnc.x25519Desc": "Классическая эллиптическая криптография, не постквантовая."
+  "vlessEnc.x25519Desc": "Классическая эллиптическая криптография, не постквантовая.",
+  "realityKeys.description": "Генерирует новую пару ключей REALITY и набор shortId. \"privateKey\" и shortId вставьте в realitySettings инбаунда; \"publicKey\" передаётся клиентам автоматически (Marzban сам подставит его в ссылки подписки, как только вы зададите privateKey).",
+  "realityKeys.generate": "Сгенерировать ключи REALITY",
+  "realityKeys.privateKey": "Приватный ключ (в realitySettings.privateKey)",
+  "realityKeys.publicKey": "Публичный ключ (для справки, клиенты получают его автоматически)",
+  "realityKeys.regenerate": "Сгенерировать заново",
+  "realityKeys.shortId": "Short ID",
+  "realityKeys.shortIds": "Short ID (в realitySettings.shortIds)",
+  "realityKeys.title": "Ключи REALITY",
+  "userDialog.vlessEncryptionHint": "У этого инбаунда включён VLESS Encryption. Клиентам нужно это значение encryption:"
 }

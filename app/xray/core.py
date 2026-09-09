@@ -55,6 +55,20 @@ class XRayCore:
                 "public_key": public_match.group(1)
             }
 
+    def get_reality_keys(self, short_id_count: int = 3):
+        x25519 = self.get_x25519()
+        if not x25519:
+            return None
+
+        return {
+            "private_key": x25519["private_key"],
+            "public_key": x25519["public_key"],
+            # REALITY shortIds are arbitrary even-length hex strings of up
+            # to 8 bytes; 8 bytes (16 hex chars) matches Xray-core's own
+            # example configs.
+            "short_ids": [os.urandom(8).hex() for _ in range(short_id_count)],
+        }
+
     def get_vlessenc(self):
         cmd = [self.executable_path, "vlessenc"]
         output = subprocess.check_output(cmd, stderr=subprocess.STDOUT).decode('utf-8')

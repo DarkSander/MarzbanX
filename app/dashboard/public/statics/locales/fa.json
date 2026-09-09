@@ -223,8 +223,8 @@
   "usersTable.noUserMatched": "به‌نظر میرسه کاربری که جستجو کردید، وجود ندارد",
   "usersTable.status": "وضعیت",
   "usersTable.total": "مجموع",
-  "vlessEnc.copied": "کپی شد",
-  "vlessEnc.copy": "کپی",
+  "copyField.copied": "کپی شد",
+  "copyField.copy": "کپی",
   "vlessEnc.decryption": "Decryption (در settings اینباند قرار دهید)",
   "vlessEnc.description": "یک جفت کلید جدید برای VLESS Encryption می‌سازد. \"decryption\" را در settings اینباند VLESS قرار دهید و \"encryption\" را به کلاینت‌ها بدهید (مثلا به‌عنوان پارامتر encryption= در لینک vless://). همه کلاینت‌های یک اینباند مقدار encryption یکسانی دارند.",
   "vlessEnc.encryption": "Encryption (برای کلاینت‌ها)",
@@ -234,5 +234,14 @@
   "vlessEnc.regenerate": "تولید کلیدهای جدید",
   "vlessEnc.title": "کلیدهای VLESS Encryption",
   "vlessEnc.x25519": "X25519",
-  "vlessEnc.x25519Desc": "رمزنگاری کلاسیک بیضوی، غیر پسا-کوانتومی."
+  "vlessEnc.x25519Desc": "رمزنگاری کلاسیک بیضوی، غیر پسا-کوانتومی.",
+  "realityKeys.description": "یک جفت کلید جدید REALITY و مجموعه‌ای از shortId می‌سازد. \"privateKey\" و shortIdها را در realitySettings اینباند قرار دهید؛ \"publicKey\" به‌طور خودکار به کلاینت‌ها داده می‌شود.",
+  "realityKeys.generate": "تولید کلیدهای REALITY",
+  "realityKeys.privateKey": "کلید خصوصی (در realitySettings.privateKey)",
+  "realityKeys.publicKey": "کلید عمومی (فقط مرجع، کلاینت‌ها خودکار دریافت می‌کنند)",
+  "realityKeys.regenerate": "تولید کلیدهای جدید",
+  "realityKeys.shortId": "Short ID",
+  "realityKeys.shortIds": "Short ID ها (در realitySettings.shortIds)",
+  "realityKeys.title": "کلیدهای REALITY",
+  "userDialog.vlessEncryptionHint": "این اینباند VLESS Encryption فعال دارد. کلاینت‌ها به این مقدار encryption نیاز دارند:"
 }

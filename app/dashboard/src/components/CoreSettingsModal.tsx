@@ -43,6 +43,7 @@ import { Icon } from "./Icon";
 import { JsonEditor } from "./JsonEditor";
 import "./JsonEditor/themes.js";
 import { useNodesQuery } from "contexts/NodesContext";
+import { RealityKeysButton } from "./RealityKeysModal";
 import { VlessEncButton } from "./VlessEncModal";
 
 export const MAX_NUMBER_OF_LOGS = 500;
@@ -247,6 +248,7 @@ const CoreSettingModalContent: FC = () => {
               {isLoading && <CircularProgress isIndeterminate size="15px" />}
             </FormLabel>
             <HStack gap={2}>
+              <RealityKeysButton />
               <VlessEncButton />
               <Tooltip label="Xray Version" placement="top">
                 <Badge height="100%" textTransform="lowercase">

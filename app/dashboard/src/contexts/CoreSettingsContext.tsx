@@ -11,6 +11,12 @@ export type VlessEncKeys = {
   mlkem768?: VlessEncKeyPair;
 };
 
+export type RealityKeys = {
+  private_key: string;
+  public_key: string;
+  short_ids: string[];
+};
+
 type CoreSettingsStore = {
   isLoading: boolean;
   isPostLoading: boolean;
@@ -18,6 +24,7 @@ type CoreSettingsStore = {
   updateConfig: (json: string) => Promise<void>;
   restartCore: () => Promise<void>;
   generateVlessEncKeys: () => Promise<VlessEncKeys>;
+  generateRealityKeys: (count?: number) => Promise<RealityKeys>;
   version: string | null;
   started: boolean | null;
   logs_websocket: string | null;
@@ -51,5 +58,8 @@ export const useCoreSettings = create<CoreSettingsStore>((set) => ({
   },
   generateVlessEncKeys: () => {
     return fetch("/core/vlessenc");
+  },
+  generateRealityKeys: (count = 3) => {
+    return fetch("/core/reality", { query: { count } });
   },
 }));
