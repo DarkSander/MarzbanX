@@ -12,7 +12,14 @@ export default defineConfig({
       include: "**/*.tsx",
     }),
     svgr(),
-    visualizer(),
+    // bundle analysis is memory-hungry and only useful when manually
+    // inspecting bundle size; skip it on normal/production builds
+    ...(process.env.ANALYZE ? [visualizer()] : []),
     splitVendorChunkPlugin(),
   ],
+  build: {
+    // gzip-size reporting for every chunk adds noticeable memory/time
+    // on low-RAM build hosts and isn't needed outside local inspection
+    reportCompressedSize: false,
+  },
 });
