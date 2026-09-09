@@ -55,6 +55,34 @@ class XRayCore:
                 "public_key": public_match.group(1)
             }
 
+    def get_vlessenc(self):
+        cmd = [self.executable_path, "vlessenc"]
+        output = subprocess.check_output(cmd, stderr=subprocess.STDOUT).decode('utf-8')
+
+        # Output looks like:
+        #   Authentication: X25519, not Post-Quantum
+        #   "decryption": "mlkem768x25519plus.native.600s.XXXX"
+        #   "encryption": "mlkem768x25519plus.native.0rtt.YYYY"
+        #
+        #   Authentication: ML-KEM-768, Post-Quantum
+        #   "decryption": "..."
+        #   "encryption": "..."
+        result = {}
+        for section in re.split(r'(?=Authentication:)', output):
+            name_match = re.match(r'Authentication:\s*([^,\n]+)', section)
+            decryption_match = re.search(r'"decryption":\s*"([^"]+)"', section)
+            encryption_match = re.search(r'"encryption":\s*"([^"]+)"', section)
+            if not (name_match and decryption_match and encryption_match):
+                continue
+
+            key = 'mlkem768' if 'ML-KEM' in name_match.group(1) else 'x25519'
+            result[key] = {
+                "decryption": decryption_match.group(1),
+                "encryption": encryption_match.group(1),
+            }
+
+        return result
+
     def __capture_process_logs(self):
         def capture_and_debug_log():
             while self.process:

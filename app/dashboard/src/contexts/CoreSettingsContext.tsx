@@ -1,12 +1,23 @@
 import { fetch } from "service/http";
 import { create } from "zustand";
 
+export type VlessEncKeyPair = {
+  decryption: string;
+  encryption: string;
+};
+
+export type VlessEncKeys = {
+  x25519?: VlessEncKeyPair;
+  mlkem768?: VlessEncKeyPair;
+};
+
 type CoreSettingsStore = {
   isLoading: boolean;
   isPostLoading: boolean;
   fetchCoreSettings: () => void;
   updateConfig: (json: string) => Promise<void>;
   restartCore: () => Promise<void>;
+  generateVlessEncKeys: () => Promise<VlessEncKeys>;
   version: string | null;
   started: boolean | null;
   logs_websocket: string | null;
@@ -37,5 +48,8 @@ export const useCoreSettings = create<CoreSettingsStore>((set) => ({
   },
   restartCore: () => {
     return fetch("/core/restart", { method: "POST" });
+  },
+  generateVlessEncKeys: () => {
+    return fetch("/core/vlessenc");
   },
 }));

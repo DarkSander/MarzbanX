@@ -61,7 +61,6 @@
   "expired": "{{time}} پیش به پایان رسیده",
   "expires": "پایان در {{time}}",
   "header.certificates": "گواهی‌ها",
-  "header.donation": "کمک مالی",
   "header.hostSettings": "تنظیمات هاست",
   "header.logout": "خروج",
   "header.nodeSettings": "تنظیمات گره‌ها",
@@ -223,5 +222,17 @@
   "usersTable.noUser": "کاربری افزوده نشده است",
   "usersTable.noUserMatched": "به‌نظر میرسه کاربری که جستجو کردید، وجود ندارد",
   "usersTable.status": "وضعیت",
-  "usersTable.total": "مجموع"
+  "usersTable.total": "مجموع",
+  "vlessEnc.copied": "کپی شد",
+  "vlessEnc.copy": "کپی",
+  "vlessEnc.decryption": "Decryption (در settings اینباند قرار دهید)",
+  "vlessEnc.description": "یک جفت کلید جدید برای VLESS Encryption می‌سازد. \"decryption\" را در settings اینباند VLESS قرار دهید و \"encryption\" را به کلاینت‌ها بدهید (مثلا به‌عنوان پارامتر encryption= در لینک vless://). همه کلاینت‌های یک اینباند مقدار encryption یکسانی دارند.",
+  "vlessEnc.encryption": "Encryption (برای کلاینت‌ها)",
+  "vlessEnc.generate": "تولید کلیدهای VLESS Encryption",
+  "vlessEnc.mlkem768": "ML-KEM-768",
+  "vlessEnc.mlkem768Desc": "مقاوم در برابر کوانتوم. کلیدهای طولانی‌تر، امنیت بیشتر.",
+  "vlessEnc.regenerate": "تولید کلیدهای جدید",
+  "vlessEnc.title": "کلیدهای VLESS Encryption",
+  "vlessEnc.x25519": "X25519",
+  "vlessEnc.x25519Desc": "رمزنگاری کلاسیک بیضوی، غیر پسا-کوانتومی."
 }

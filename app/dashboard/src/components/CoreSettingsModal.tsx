@@ -43,6 +43,7 @@ import { Icon } from "./Icon";
 import { JsonEditor } from "./JsonEditor";
 import "./JsonEditor/themes.js";
 import { useNodesQuery } from "contexts/NodesContext";
+import { VlessEncButton } from "./VlessEncModal";
 
 export const MAX_NUMBER_OF_LOGS = 500;
 
@@ -245,7 +246,8 @@ const CoreSettingModalContent: FC = () => {
               {t("core.configuration")}{" "}
               {isLoading && <CircularProgress isIndeterminate size="15px" />}
             </FormLabel>
-            <HStack gap={0}>
+            <HStack gap={2}>
+              <VlessEncButton />
               <Tooltip label="Xray Version" placement="top">
                 <Badge height="100%" textTransform="lowercase">
                   {version && `v${version}`}

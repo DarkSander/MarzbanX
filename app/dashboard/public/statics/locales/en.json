@@ -56,7 +56,6 @@
   "expired": "Expired {{time}} ago",
   "expires": "Expires in {{time}}",
   "header.certificates": "Certificates",
-  "header.donation": "Donation",
   "header.hostSettings": "Host Settings",
   "header.logout": "Log out",
   "header.nodeSettings": "Node Settings",
@@ -217,5 +216,17 @@
   "usersTable.noUser": "There is no user added to the system",
   "usersTable.noUserMatched": "It seems there is no user matched with what you are looking for",
   "usersTable.status": "status",
-  "usersTable.total": "Total"
+  "usersTable.total": "Total",
+  "vlessEnc.copied": "Copied",
+  "vlessEnc.copy": "Copy",
+  "vlessEnc.decryption": "Decryption (paste into the inbound's settings)",
+  "vlessEnc.description": "Generates a fresh key pair for VLESS Encryption. Put \"decryption\" into the VLESS inbound's settings, and give \"encryption\" to your clients (e.g. as the encryption= parameter in their vless:// link). Every client of that inbound shares the same encryption value.",
+  "vlessEnc.encryption": "Encryption (give to clients)",
+  "vlessEnc.generate": "Generate VLESS Encryption keys",
+  "vlessEnc.mlkem768": "ML-KEM-768",
+  "vlessEnc.mlkem768Desc": "Post-quantum resistant. Longer keys, stronger guarantee.",
+  "vlessEnc.regenerate": "Generate new keys",
+  "vlessEnc.title": "VLESS Encryption Keys",
+  "vlessEnc.x25519": "X25519",
+  "vlessEnc.x25519Desc": "Classic elliptic-curve, not post-quantum."
 }

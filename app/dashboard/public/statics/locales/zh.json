@@ -56,7 +56,6 @@
   "expired": "{{time}}失效",
   "expires": "{{time}}有效",
   "header.certificates": "证书",
-  "header.donation": "捐赠",
   "header.hostSettings": "设置",
   "header.logout": "退出",
   "header.nodeSettings": "节点设置",
@@ -218,5 +217,17 @@
   "usersTable.noUserMatched": "没有找到您搜索的用户",
   "usersTable.status": "状态",
   "usersTable.sortByExpire": "按过期时间排序",
-  "usersTable.total": "总共"
+  "usersTable.total": "总共",
+  "vlessEnc.copied": "已复制",
+  "vlessEnc.copy": "复制",
+  "vlessEnc.decryption": "Decryption（粘贴到入站的 settings 中）",
+  "vlessEnc.description": "生成一对新的 VLESS Encryption 密钥。将 \"decryption\" 填入 VLESS 入站的 settings，将 \"encryption\" 分发给客户端（例如作为 vless:// 链接中的 encryption= 参数）。同一入站的所有客户端共用同一个 encryption 值。",
+  "vlessEnc.encryption": "Encryption（分发给客户端）",
+  "vlessEnc.generate": "生成 VLESS Encryption 密钥",
+  "vlessEnc.mlkem768": "ML-KEM-768",
+  "vlessEnc.mlkem768Desc": "抗量子。密钥更长，安全性更高。",
+  "vlessEnc.regenerate": "重新生成",
+  "vlessEnc.title": "VLESS Encryption 密钥",
+  "vlessEnc.x25519": "X25519",
+  "vlessEnc.x25519Desc": "经典椭圆曲线算法，非抗量子。"
 }

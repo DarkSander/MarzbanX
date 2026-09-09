@@ -85,6 +85,13 @@ def get_core_stats(admin: Admin = Depends(Admin.get_current)):
     )
 
 
+@router.get("/core/vlessenc", responses={403: responses._403})
+def generate_vless_encryption_keys(admin: Admin = Depends(Admin.check_sudo_admin)) -> dict:
+    """Generate a fresh VLESS Encryption (post-quantum) decryption/encryption
+    key pair, for both the X25519 and ML-KEM-768 authentication modes."""
+    return xray.core.get_vlessenc()
+
+
 @router.post("/core/restart", responses={403: responses._403})
 def restart_core(admin: Admin = Depends(Admin.check_sudo_admin)):
     """Restart the core and all connected nodes."""

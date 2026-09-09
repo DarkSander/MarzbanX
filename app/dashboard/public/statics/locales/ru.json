@@ -56,7 +56,6 @@
   "expired": "Истекло {{time}} назад",
   "expires": "Истекает через {{time}}",
   "header.certificates": "Сертификаты",
-  "header.donation": "Пожертвование",
   "header.hostSettings": "Настройки хоста",
   "header.logout": "Выйти",
   "header.nodeSettings": "Настройки узлов",
@@ -217,5 +216,17 @@
   "usersTable.noUser": "В системе нет созданных пользователей",
   "usersTable.noUserMatched": "Похоже, нет пользователя, соответствующего вашему запросу",
   "usersTable.status": "Статус",
-  "usersTable.total": "Всего"
+  "usersTable.total": "Всего",
+  "vlessEnc.copied": "Скопировано",
+  "vlessEnc.copy": "Копировать",
+  "vlessEnc.decryption": "Decryption (вставить в settings инбаунда)",
+  "vlessEnc.description": "Генерирует новую пару ключей для VLESS Encryption. \"decryption\" вставьте в settings VLESS-инбаунда, а \"encryption\" раздайте клиентам (например, как параметр encryption= в ссылке vless://). У всех клиентов одного инбаунда значение encryption общее.",
+  "vlessEnc.encryption": "Encryption (для клиентов)",
+  "vlessEnc.generate": "Сгенерировать ключи VLESS Encryption",
+  "vlessEnc.mlkem768": "ML-KEM-768",
+  "vlessEnc.mlkem768Desc": "Устойчив к квантовым атакам. Ключи длиннее, надёжность выше.",
+  "vlessEnc.regenerate": "Сгенерировать заново",
+  "vlessEnc.title": "Ключи VLESS Encryption",
+  "vlessEnc.x25519": "X25519",
+  "vlessEnc.x25519Desc": "Классическая эллиптическая криптография, не постквантовая."
 }
