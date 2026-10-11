@@ -7,6 +7,8 @@
 set -e
 
 APP_DIR="${MARZBANX_DIR:-/opt/marzbanx}"
+# Must match the host side of the volume in docker-compose.yml
+DATA_DIR="/var/lib/marzban"
 COMPOSE="docker compose"
 
 colorized_echo() {
@@ -27,6 +29,21 @@ cd_app_dir() {
         exit 1
     fi
     cd "$APP_DIR"
+}
+
+# Versions before the /var/lib/marzban defaults kept the Xray config and the
+# SQLite database under /code inside the container. Copy them out of the
+# existing container before it gets recreated, unless the host already has
+# them -- after that the app reads only from the volume.
+rescue_legacy_state() {
+    mkdir -p "$DATA_DIR"
+    local f
+    for f in xray_config.json db.sqlite3; do
+        [ -e "$DATA_DIR/$f" ] && continue
+        if $COMPOSE cp "marzban:/code/$f" "$DATA_DIR/$f" 2>/dev/null; then
+            colorized_echo yellow "Copied $f out of the existing container into $DATA_DIR"
+        fi
+    done
 }
 
 usage() {
@@ -53,6 +70,7 @@ EOF
 case "$1" in
     up)
         cd_app_dir
+        rescue_legacy_state
         $COMPOSE up -d
         ;;
     down)
@@ -83,6 +101,7 @@ case "$1" in
         git pull
         colorized_echo blue "Rebuilding image..."
         $COMPOSE build
+        rescue_legacy_state
         colorized_echo blue "Restarting..."
         $COMPOSE up -d
         colorized_echo green "Done."
@@ -104,7 +123,7 @@ case "$1" in
         dest="${MARZBANX_BACKUP_DIR:-/opt/marzbanx-backups}"
         mkdir -p "$dest"
         archive="$dest/marzbanx-backup-$(date +%Y%m%d-%H%M%S).tar.gz"
-        tar czf "$archive" /var/lib/marzban "$APP_DIR/.env"
+        tar czf "$archive" "$DATA_DIR" "$APP_DIR/.env"
         colorized_echo green "Backup saved to $archive"
         ;;
     help|""|*)

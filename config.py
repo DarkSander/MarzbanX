@@ -1,10 +1,35 @@
+import logging
+import os
+import shutil
+
 from decouple import config
 from dotenv import load_dotenv
 
 load_dotenv()
 
+# Everything the panel persists defaults to this directory, which
+# docker-compose.yml mounts from the host. The old defaults were relative to
+# the app directory (/code in the image), i.e. the container's writable
+# layer, so the database and Xray config silently reset whenever the
+# container was recreated.
+DATA_DIR = config("MARZBAN_DATA_DIR", default="/var/lib/marzban")
+_APP_DIR = os.path.dirname(os.path.abspath(__file__))
 
-SQLALCHEMY_DATABASE_URL = config("SQLALCHEMY_DATABASE_URL", default="sqlite:///db.sqlite3")
+
+def _persistent_default(filename: str) -> str:
+    """DATA_DIR/filename, seeded from the copy next to the app (the old
+    default location, or the bundled default) if it isn't there yet."""
+    target = os.path.join(DATA_DIR, filename)
+    os.makedirs(DATA_DIR, exist_ok=True)
+    legacy = os.path.join(_APP_DIR, filename)
+    if not os.path.exists(target) and os.path.isfile(legacy):
+        shutil.copy2(legacy, target)
+        logging.getLogger("uvicorn.error").warning(f"Copied {legacy} to {target}")
+    return target
+
+
+SQLALCHEMY_DATABASE_URL = config("SQLALCHEMY_DATABASE_URL", default=None) \
+    or f"sqlite:///{_persistent_default('db.sqlite3')}"
 SQLALCHEMY_POOL_SIZE = config("SQLALCHEMY_POOL_SIZE", cast=int, default=10)
 SQLIALCHEMY_MAX_OVERFLOW = config("SQLIALCHEMY_MAX_OVERFLOW", cast=int, default=30)
 
@@ -25,7 +50,7 @@ VITE_BASE_API = f"http://127.0.0.1:{UVICORN_PORT}/api/" \
     if DEBUG and config("VITE_BASE_API", default="/api/") == "/api/" \
     else config("VITE_BASE_API", default="/api/")
 
-XRAY_JSON = config("XRAY_JSON", default="./xray_config.json")
+XRAY_JSON = config("XRAY_JSON", default=None) or _persistent_default("xray_config.json")
 XRAY_FALLBACKS_INBOUND_TAG = config("XRAY_FALLBACKS_INBOUND_TAG", cast=str, default="") or config(
     "XRAY_FALLBACK_INBOUND_TAG", cast=str, default=""
 )
@@ -47,7 +72,7 @@ TELEGRAM_DEFAULT_VLESS_FLOW = config("TELEGRAM_DEFAULT_VLESS_FLOW", default="")
 
 JWT_ACCESS_TOKEN_EXPIRE_MINUTES = config("JWT_ACCESS_TOKEN_EXPIRE_MINUTES", cast=int, default=1440)
 
-CUSTOM_TEMPLATES_DIRECTORY = config("CUSTOM_TEMPLATES_DIRECTORY", default=None)
+CUSTOM_TEMPLATES_DIRECTORY = config("CUSTOM_TEMPLATES_DIRECTORY", default=os.path.join(DATA_DIR, "templates"))
 SUBSCRIPTION_PAGE_TEMPLATE = config("SUBSCRIPTION_PAGE_TEMPLATE", default="subscription/index.html")
 HOME_PAGE_TEMPLATE = config("HOME_PAGE_TEMPLATE", default="home/index.html")
 

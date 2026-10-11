@@ -8,8 +8,23 @@ from cryptography import x509
 from cryptography.hazmat.backends import default_backend
 
 from app import app, logger
-from config import (DEBUG, UVICORN_HOST, UVICORN_PORT, UVICORN_SSL_CERTFILE,
-                    UVICORN_SSL_KEYFILE, UVICORN_SSL_CA_TYPE, UVICORN_UDS)
+from config import (DATA_DIR, DEBUG, SQLALCHEMY_DATABASE_URL, UVICORN_HOST,
+                    UVICORN_PORT, UVICORN_SSL_CERTFILE, UVICORN_SSL_KEYFILE,
+                    UVICORN_SSL_CA_TYPE, UVICORN_UDS, XRAY_JSON)
+
+
+def warn_about_state_outside_data_dir():
+    paths = {"XRAY_JSON": XRAY_JSON}
+    if SQLALCHEMY_DATABASE_URL.startswith("sqlite") and ":///" in SQLALCHEMY_DATABASE_URL:
+        paths["SQLALCHEMY_DATABASE_URL"] = SQLALCHEMY_DATABASE_URL.split(":///", 1)[1].split("?", 1)[0]
+
+    data_dir = os.path.abspath(DATA_DIR).rstrip(os.sep) + os.sep
+    for name, path in paths.items():
+        if not os.path.abspath(path).startswith(data_dir):
+            logger.warning(
+                f"{name} points to {os.path.abspath(path)}, outside {DATA_DIR}: "
+                f"in Docker this is lost whenever the container is recreated"
+            )
 
 
 def validate_cert_and_key(cert_file_path, key_file_path, ca_type):
@@ -47,6 +62,8 @@ Self-signed CAs are useful in testing or internal use cases, they’re not suita
 if __name__ == "__main__":
     # Do NOT change workers count for now
     # multi-workers support isn't implemented yet for APScheduler and XRay module
+
+    warn_about_state_outside_data_dir()
 
     bind_args = {}
     if UVICORN_SSL_CA_TYPE not in ["public", "private"]:
