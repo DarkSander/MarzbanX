@@ -66,6 +66,7 @@
     - [Функции](#функции)
 - [Руководство по установке](#руководство-по-установке)
 - [Конфигурация](#конфигурация)
+- [Маршрутизация подписки (Happ)](#маршрутизация-подписки-happ)
 - [документация](#документация)
 - [API](#api)
 - [Backup](#backup)
@@ -325,10 +326,32 @@ server {
 | USE_CUSTOM_JSON_FOR_V2RAYNG              | Enable custom JSON config only for V2rayNG (default: `False`)                                                                  |
 | USE_CUSTOM_JSON_FOR_STREISAND            | Enable custom JSON config only for Streisand (default: `False`)                                                                |
 | USE_CUSTOM_JSON_FOR_V2RAYN               | Enable custom JSON config only for V2rayN (default: `False`)                                                                   |
+| SUB_ROUTING_MAX_HEADER_SIZE              | Максимальный размер заголовка `routing` с профилем Happ в байтах; профиль больше не отдаётся (по умолчанию: `3072`)            |
 
 > Всё состояние панели хранится в `MARZBAN_DATA_DIR`. При первом запуске новой версии файлы, которые старые версии держали
 > рядом с приложением (`/code/xray_config.json`, `/code/db.sqlite3`), копируются туда автоматически, а `marzbanx up` / `marzbanx update`
 > перед пересозданием контейнера сами вытаскивают их из старого контейнера.
+
+# Маршрутизация подписки (Happ)
+
+Панель может отдавать вместе с подпиской профиль маршрутизации [Happ](https://www.happ.su/main/dev-docs/routing) — клиент
+применит его сам (например, российские сайты напрямую, остальное через прокси), без ручной настройки на устройстве.
+Профиль передаётся в заголовке ответа `routing` в виде ссылки `happ://routing/onadd/<base64 JSON>`; INCY тоже его понимает.
+
+Настройка: меню в шапке → **Маршрутизация подписки**.
+
+- **Источник:**
+  - *RoscomVPN Default* / *RoscomVPN Whitelist* — готовые профили из
+    [hydraponique/roscomvpn-routing](https://github.com/hydraponique/roscomvpn-routing). Скачиваются при сохранении и
+    обновляются раз в сутки; если GitHub недоступен, отдаётся последняя сохранённая версия. Кнопка **Обновить сейчас** —
+    скачать немедленно.
+  - *Своя ссылка* — `happ://routing/onadd/...` (добавить и сразу включить) или `happ://routing/add/...` (только добавить в список).
+  - *Свой JSON* — профиль в формате Happ (`Name`, `DirectSites`, `ProxySites`, `BlockSites`, ...), панель сама соберёт ссылку `onadd`.
+- **Только для Happ / INCY** — отдавать заголовок только клиентам с таким User-Agent.
+- Внизу окна — превью того, что реально получат клиенты (`DirectSites` / `ProxySites` / `BlockSites`) и размер заголовка.
+  Профиль больше `SUB_ROUTING_MAX_HEADER_SIZE` не отдаётся (обратные прокси ограничивают суммарный размер заголовков ответа), в лог пишется предупреждение.
+
+Проверить, что заголовок уходит: `curl -sI -A "Happ/2.0" https://<домен>/sub/<токен> | grep -i routing`.
 
 # документация
 

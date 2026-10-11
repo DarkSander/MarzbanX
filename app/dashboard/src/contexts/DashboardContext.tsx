@@ -53,6 +53,7 @@ type DashboardStateType = {
   isEditingHosts: boolean;
   isEditingNodes: boolean;
   isEditingCertificates: boolean;
+  isEditingSubscriptionRouting: boolean;
   isShowingNodesUsage: boolean;
   isResetingAllUsage: boolean;
   resetUsageUser: User | null;
@@ -74,6 +75,7 @@ type DashboardStateType = {
   onEditingHosts: (isEditingHosts: boolean) => void;
   onEditingNodes: (isEditingHosts: boolean) => void;
   onEditingCertificates: (isEditingCertificates: boolean) => void;
+  onEditingSubscriptionRouting: (isEditingSubscriptionRouting: boolean) => void;
   onShowingNodesUsage: (isShowingNodesUsage: boolean) => void;
   resetDataUsage: (user: User) => Promise<void>;
   revokeSubscription: (user: User) => Promise<void>;
@@ -123,6 +125,7 @@ export const useDashboard = create(
     isEditingHosts: false,
     isEditingNodes: false,
     isEditingCertificates: false,
+    isEditingSubscriptionRouting: false,
     isShowingNodesUsage: false,
     resetUsageUser: null,
     revokeSubscriptionUser: null,
@@ -200,6 +203,9 @@ export const useDashboard = create(
     },
     onEditingCertificates: (isEditingCertificates: boolean) => {
       set({ isEditingCertificates });
+    },
+    onEditingSubscriptionRouting: (isEditingSubscriptionRouting: boolean) => {
+      set({ isEditingSubscriptionRouting });
     },
     onShowingNodesUsage: (isShowingNodesUsage: boolean) => {
       set({ isShowingNodesUsage });

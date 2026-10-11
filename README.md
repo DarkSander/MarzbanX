@@ -66,6 +66,7 @@
     - [Features](#features)
 - [Installation guide](#installation-guide)
 - [Configuration](#configuration)
+- [Subscription routing (Happ)](#subscription-routing-happ)
 - [Documentation](#documentation)
 - [API](#api)
 - [Backup](#backup)
@@ -326,10 +327,31 @@ By default the app will be run on `http://localhost:8000/dashboard`. You can con
 | USE_CUSTOM_JSON_FOR_V2RAYNG              | Enable custom JSON config only for V2rayNG (default: `False`)                                                            |
 | USE_CUSTOM_JSON_FOR_STREISAND            | Enable custom JSON config only for Streisand (default: `False`)                                                          |
 | USE_CUSTOM_JSON_FOR_V2RAYN               | Enable custom JSON config only for V2rayN (default: `False`)                                                             |
+| SUB_ROUTING_MAX_HEADER_SIZE              | Largest Happ `routing` header to send, in bytes; bigger profiles are not sent (default: `3072`)                          |
 
 > All panel state lives in `MARZBAN_DATA_DIR`. On the first start of this version, files older versions kept next to the app
 > (`/code/xray_config.json`, `/code/db.sqlite3`) are copied there automatically, and `marzbanx up` / `marzbanx update`
 > copy them out of the old container before recreating it.
+
+# Subscription routing (Happ)
+
+The panel can send a [Happ](https://www.happ.su/main/dev-docs/routing) routing profile with every subscription, so the
+client applies split routing (e.g. Russian sites directly, the rest through the proxy) with no setup on the device. The
+profile goes in the `routing` response header as `happ://routing/onadd/<base64 JSON>`; INCY understands it too.
+
+Configure it from the header menu → **Subscription routing**:
+
+- **Source:**
+  - *RoscomVPN Default* / *RoscomVPN Whitelist* — ready-made profiles from
+    [hydraponique/roscomvpn-routing](https://github.com/hydraponique/roscomvpn-routing). Downloaded on save and refreshed
+    daily; if GitHub is unreachable the last saved copy keeps being sent. **Update now** downloads it immediately.
+  - *Custom link* — `happ://routing/onadd/...` (add and activate) or `happ://routing/add/...` (only add to the list).
+  - *Custom JSON* — a Happ profile (`Name`, `DirectSites`, `ProxySites`, `BlockSites`, ...); the panel builds the `onadd` link.
+- **Only for Happ / INCY** — send the header only to clients with that User-Agent.
+- The dialog previews what clients actually get (`DirectSites` / `ProxySites` / `BlockSites`) and the header size.
+  Profiles over `SUB_ROUTING_MAX_HEADER_SIZE` are not sent (reverse proxies cap the total response header size) and a warning is logged.
+
+Check that the header goes out: `curl -sI -A "Happ/2.0" https://<domain>/sub/<token> | grep -i routing`.
 
 
 # Documentation

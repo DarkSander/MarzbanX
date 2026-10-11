@@ -310,6 +310,22 @@ class AcmeSettings(Base):
     directory_url = Column(String(512), nullable=True)
 
 
+class SubscriptionRouting(Base):
+    """Singleton: the Happ routing profile sent with subscriptions."""
+    __tablename__ = "subscription_routing"
+
+    id = Column(Integer, primary_key=True)
+    enabled = Column(Boolean, nullable=False, default=False)
+    source = Column(String(32), nullable=False, default="roscomvpn_default")
+    custom_value = Column(Text, nullable=True)
+    happ_only = Column(Boolean, nullable=False, default=False)
+    # last good preset download, kept so GitHub outages don't drop the header
+    cached_source = Column(String(32), nullable=True)
+    cached_link = Column(Text, nullable=True)
+    fetched_at = Column(DateTime, nullable=True)
+    last_error = Column(String(1024), nullable=True)
+
+
 class Certificate(Base):
     __tablename__ = "certificates"
 

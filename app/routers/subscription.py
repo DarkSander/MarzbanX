@@ -9,6 +9,7 @@ from app.dependencies import get_validated_sub, validate_dates
 from app.models.user import SubscriptionUserResponse, UserResponse
 from app.subscription.share import encode_title, generate_subscription
 from app.templates import render_template
+from app.utils import happ_routing
 from config import (
     SUB_PROFILE_TITLE,
     SUB_SUPPORT_URL,
@@ -45,6 +46,23 @@ def get_subscription_user_info(user: UserResponse) -> dict:
     }
 
 
+def get_subscription_headers(request: Request, db: Session, user: UserResponse, user_agent: str) -> dict:
+    headers = {
+        "content-disposition": f'attachment; filename="{user.username}"',
+        "profile-web-page-url": str(request.url),
+        "support-url": SUB_SUPPORT_URL,
+        "profile-title": encode_title(SUB_PROFILE_TITLE),
+        "profile-update-interval": SUB_UPDATE_INTERVAL,
+        "subscription-userinfo": "; ".join(
+            f"{key}={val}"
+            for key, val in get_subscription_user_info(user).items()
+        )
+    }
+    if routing := happ_routing.routing_header(db, user_agent):
+        headers["routing"] = routing
+    return headers
+
+
 @router.get("/{token}/")
 @router.get("/{token}", include_in_schema=False)
 def user_subscription(
@@ -66,17 +84,7 @@ def user_subscription(
         )
 
     crud.update_user_sub(db, dbuser, user_agent)
-    response_headers = {
-        "content-disposition": f'attachment; filename="{user.username}"',
-        "profile-web-page-url": str(request.url),
-        "support-url": SUB_SUPPORT_URL,
-        "profile-title": encode_title(SUB_PROFILE_TITLE),
-        "profile-update-interval": SUB_UPDATE_INTERVAL,
-        "subscription-userinfo": "; ".join(
-            f"{key}={val}"
-            for key, val in get_subscription_user_info(user).items()
-        )
-    }
+    response_headers = get_subscription_headers(request, db, user, user_agent)
 
     if re.match(r'^([Cc]lash-verge|[Cc]lash[-\.]?[Mm]eta|[Ff][Ll][Cc]lash|[Mm]ihomo)', user_agent):
         conf = generate_subscription(user=user, config_format="clash-meta", as_base64=False, reverse=False)
@@ -173,17 +181,7 @@ def user_subscription_with_client_type(
     """Provides a subscription link based on the specified client type (e.g., Clash, V2Ray)."""
     user: UserResponse = UserResponse.model_validate(dbuser)
 
-    response_headers = {
-        "content-disposition": f'attachment; filename="{user.username}"',
-        "profile-web-page-url": str(request.url),
-        "support-url": SUB_SUPPORT_URL,
-        "profile-title": encode_title(SUB_PROFILE_TITLE),
-        "profile-update-interval": SUB_UPDATE_INTERVAL,
-        "subscription-userinfo": "; ".join(
-            f"{key}={val}"
-            for key, val in get_subscription_user_info(user).items()
-        )
-    }
+    response_headers = get_subscription_headers(request, db, user, user_agent)
 
     config = client_config.get(client_type)
     conf = generate_subscription(user=user,

@@ -18,6 +18,7 @@ import {
   DocumentMinusIcon,
   LinkIcon,
   LockClosedIcon,
+  MapIcon,
   MoonIcon,
   SquaresPlusIcon,
   SunIcon,
@@ -52,6 +53,7 @@ const NodesIcon = chakra(SquaresPlusIcon, iconProps);
 const NodesUsageIcon = chakra(ChartPieIcon, iconProps);
 const ResetUsageIcon = chakra(DocumentMinusIcon, iconProps);
 const CertificatesIcon = chakra(LockClosedIcon, iconProps);
+const SubscriptionRoutingIcon = chakra(MapIcon, iconProps);
 
 export const Header: FC<HeaderProps> = ({ actions }) => {
   const { userData, getUserIsSuccess, getUserIsPending } = useGetUser();
@@ -69,6 +71,7 @@ export const Header: FC<HeaderProps> = ({ actions }) => {
     onEditingNodes,
     onShowingNodesUsage,
     onEditingCertificates,
+    onEditingSubscriptionRouting,
   } = useDashboard();
   const { t } = useTranslation();
   const { colorMode, toggleColorMode } = useColorMode();
@@ -144,6 +147,14 @@ export const Header: FC<HeaderProps> = ({ actions }) => {
                     onClick={onEditingCertificates.bind(null, true)}
                   >
                     {t("header.certificates")}
+                  </MenuItem>
+                  <MenuItem
+                    maxW="170px"
+                    fontSize="sm"
+                    icon={<SubscriptionRoutingIcon />}
+                    onClick={onEditingSubscriptionRouting.bind(null, true)}
+                  >
+                    {t("header.subscriptionRouting")}
                   </MenuItem>
                 </>
               )}

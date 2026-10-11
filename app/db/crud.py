@@ -27,6 +27,7 @@ from app.db.models import (
     ProxyHost,
     ProxyInbound,
     ProxyTypes,
+    SubscriptionRouting,
     System,
     User,
     UserTemplate,
@@ -902,6 +903,23 @@ def get_tls_certificate(db: Session) -> TLS:
         TLS: TLS certificate information.
     """
     return db.query(TLS).first()
+
+
+def get_subscription_routing(db: Session) -> Optional[SubscriptionRouting]:
+    """Retrieves the (singleton) subscription routing settings, if saved."""
+    return db.query(SubscriptionRouting).first()
+
+
+def get_or_create_subscription_routing(db: Session) -> SubscriptionRouting:
+    """Retrieves the subscription routing settings, creating the defaults
+    (disabled, RoscomVPN Default preset) on first use."""
+    settings = get_subscription_routing(db)
+    if settings is None:
+        settings = SubscriptionRouting(enabled=False, source="roscomvpn_default", happ_only=False)
+        db.add(settings)
+        db.commit()
+        db.refresh(settings)
+    return settings
 
 
 def get_acme_settings(db: Session) -> Optional[AcmeSettings]:
