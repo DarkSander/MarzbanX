@@ -290,20 +290,21 @@ By default the app will be run on `http://localhost:8000/dashboard`. You can con
 | ---------------------------------------- |--------------------------------------------------------------------------------------------------------------------------|
 | SUDO_USERNAME                            | Superuser's username                                                                                                     |
 | SUDO_PASSWORD                            | Superuser's password                                                                                                     |
-| SQLALCHEMY_DATABASE_URL                  | Database URL ([SQLAlchemy's docs](https://docs.sqlalchemy.org/en/20/core/engines.html#database-urls))                    |
+| MARZBAN_DATA_DIR                         | Directory for all panel state (database, Xray config, templates, certificates); mounted from the host in Docker (default: `/var/lib/marzban`) |
+| SQLALCHEMY_DATABASE_URL                  | Database URL ([SQLAlchemy's docs](https://docs.sqlalchemy.org/en/20/core/engines.html#database-urls)) (default: `sqlite:////var/lib/marzban/db.sqlite3`) |
 | UVICORN_HOST                             | Bind application to this host (default: `0.0.0.0`)                                                                       |
 | UVICORN_PORT                             | Bind application to this port (default: `8000`)                                                                          |
 | UVICORN_UDS                              | Bind application to a UNIX domain socket                                                                                 |
 | UVICORN_SSL_CERTFILE                     | SSL certificate file to have application on https                                                                        |
 | UVICORN_SSL_KEYFILE                      | SSL key file to have application on https                                                                                |
 | UVICORN_SSL_CA_TYPE                      | Type of authority SSL certificate. Use `private` for testing self-signed CA (default: `public`)                          |
-| XRAY_JSON                                | Path of Xray's json config file (default: `xray_config.json`)                                                            |
+| XRAY_JSON                                | Path of Xray's json config file (default: `/var/lib/marzban/xray_config.json`)                                           |
 | XRAY_EXECUTABLE_PATH                     | Path of Xray binary (default: `/usr/local/bin/xray`)                                                                     |
 | XRAY_ASSETS_PATH                         | Path of Xray assets (default: `/usr/local/share/xray`)                                                                   |
 | XRAY_SUBSCRIPTION_URL_PREFIX             | Prefix of subscription URLs                                                                                              |
 | XRAY_FALLBACKS_INBOUND_TAG               | Tag of the inbound that includes fallbacks, needed in the case you're using fallbacks                                    |
 | XRAY_EXCLUDE_INBOUND_TAGS                | Tags of the inbounds that shouldn't be managed and included in links by application                                      |
-| CUSTOM_TEMPLATES_DIRECTORY               | Customized templates directory (default: `app/templates`)                                                                |
+| CUSTOM_TEMPLATES_DIRECTORY               | Customized templates directory, missing ones fall back to the built-in templates (default: `/var/lib/marzban/templates`) |
 | CLASH_SUBSCRIPTION_TEMPLATE              | The template that will be used for generating clash configs (default: `clash/default.yml`)                               |
 | SUBSCRIPTION_PAGE_TEMPLATE               | The template used for generating subscription info page (default: `subscription/index.html`)                             |
 | HOME_PAGE_TEMPLATE                       | Decoy page template (default: `home/index.html`)                                                                         |
@@ -325,6 +326,10 @@ By default the app will be run on `http://localhost:8000/dashboard`. You can con
 | USE_CUSTOM_JSON_FOR_V2RAYNG              | Enable custom JSON config only for V2rayNG (default: `False`)                                                            |
 | USE_CUSTOM_JSON_FOR_STREISAND            | Enable custom JSON config only for Streisand (default: `False`)                                                          |
 | USE_CUSTOM_JSON_FOR_V2RAYN               | Enable custom JSON config only for V2rayN (default: `False`)                                                             |
+
+> All panel state lives in `MARZBAN_DATA_DIR`. On the first start of this version, files older versions kept next to the app
+> (`/code/xray_config.json`, `/code/db.sqlite3`) are copied there automatically, and `marzbanx up` / `marzbanx update`
+> copy them out of the old container before recreating it.
 
 
 # Documentation

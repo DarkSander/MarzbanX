@@ -289,20 +289,21 @@ server {
 | ---------------------------------------- |--------------------------------------------------------------------------------------------------------------------------------|
 | SUDO_USERNAME                            | Имя пользователя главного администратора                                                                                       |
 | SUDO_PASSWORD                            | Пароль главного администратора                                                                                                 |
-| SQLALCHEMY_DATABASE_URL                  | Путь к файлу БД ([SQLAlchemy's docs](https://docs.sqlalchemy.org/en/20/core/engines.html#database-urls))                       |
+| MARZBAN_DATA_DIR                         | Папка для всего состояния панели (БД, конфиг Xray, шаблоны, сертификаты); в Docker примонтирована с хоста (по умолчанию: `/var/lib/marzban`) |
+| SQLALCHEMY_DATABASE_URL                  | Путь к файлу БД ([SQLAlchemy's docs](https://docs.sqlalchemy.org/en/20/core/engines.html#database-urls)) (по умолчанию: `sqlite:////var/lib/marzban/db.sqlite3`) |
 | UVICORN_HOST                             | Привязка приложения к хосту (по умолчанию: `0.0.0.0`)                                                                          |
 | UVICORN_PORT                             | Привязка приложения к порту (по умолчанию: `8000`)                                                                             |
 | UVICORN_UDS                              | Привязка приложения к UNIX domain socket                                                                                       |
 | UVICORN_SSL_CERTFILE                     | Адрес файла сертификата SSL                                                                                                    |
 | UVICORN_SSL_KEYFILE                      | Адрес файла ключа SSL                                                                                                          |
 | UVICORN_SSL_CA_TYPE                      | Тип центра сертификации ключа SSL. Используйте `private` для тестирования самоподписанных CA (по умолчанию: `public`)          |
-| XRAY_JSON                                | Адрес файла JSON конфигурации Xray. (по умолчанию: `xray_config.json`)                                                         |
+| XRAY_JSON                                | Адрес файла JSON конфигурации Xray. (по умолчанию: `/var/lib/marzban/xray_config.json`)                                        |
 | XRAY_EXECUTABLE_PATH                     | Путь к бинарникам Xray  (по умолчанию: `/usr/local/bin/xray`)                                                                  |
 | XRAY_ASSETS_PATH                         | Путь к папке с рессурсными файлами для Xray (файлы geoip.dat и geosite.dat) (по умолчанию: `/usr/local/share/xray`)            |
 | XRAY_SUBSCRIPTION_URL_PREFIX             | Префикс адреса подписки                                                                                                        |
 | XRAY_FALLBACKS_INBOUND_TAG               | Если вы используете входящее соединение с несколькими резервными вариантами, укажите здесь его тег                             |
 | XRAY_EXCLUDE_INBOUND_TAGS                | Теги входящих соединений, которые не требуют управления и не должны быть включены в список прокси                              |
-| CUSTOM_TEMPLATES_DIRECTORY               | Путь к папке с пользовательскими шаблонами (по умолчанию: `app/templates`)                                                     |
+| CUSTOM_TEMPLATES_DIRECTORY               | Путь к папке с пользовательскими шаблонами, недостающие берутся из встроенных (по умолчанию: `/var/lib/marzban/templates`)     |
 | CLASH_SUBSCRIPTION_TEMPLATE              | Шаблон для создания конфигурации Clash (по умолчанию: `clash/default.yml`)                                                     |
 | SUBSCRIPTION_PAGE_TEMPLATE               | Шаблон для страницы подписки (по умолчанию: `subscription/index.html`)                                                         |
 | HOME_PAGE_TEMPLATE                       | Шаблон главной страницы (по умолчанию: `home/index.html`)                                                                      |
@@ -324,6 +325,10 @@ server {
 | USE_CUSTOM_JSON_FOR_V2RAYNG              | Enable custom JSON config only for V2rayNG (default: `False`)                                                                  |
 | USE_CUSTOM_JSON_FOR_STREISAND            | Enable custom JSON config only for Streisand (default: `False`)                                                                |
 | USE_CUSTOM_JSON_FOR_V2RAYN               | Enable custom JSON config only for V2rayN (default: `False`)                                                                   |
+
+> Всё состояние панели хранится в `MARZBAN_DATA_DIR`. При первом запуске новой версии файлы, которые старые версии держали
+> рядом с приложением (`/code/xray_config.json`, `/code/db.sqlite3`), копируются туда автоматически, а `marzbanx up` / `marzbanx update`
+> перед пересозданием контейнера сами вытаскивают их из старого контейнера.
 
 # документация
 
