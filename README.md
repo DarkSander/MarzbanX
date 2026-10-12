@@ -2,7 +2,7 @@
 
 <p align="center">
   Панель управления прокси на базе <a href="https://github.com/XTLS/Xray-core">Xray-core</a> — форк
-  <a href="https://github.com/Gozargah/Marzban">Gozargah/Marzban</a> со свежим ядром, новым дизайном и доработками под российских пользователей
+  <a href="https://github.com/Gozargah/Marzban">Gozargah/Marzban</a> со свежим ядром, новым дизайном и доработками
 </p>
 
 <p align="center">
