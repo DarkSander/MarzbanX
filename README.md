@@ -1,4 +1,9 @@
-<h1 align="center">MarzbanX</h1>
+<p align="center">
+     <picture>
+       <source media="(prefers-color-scheme: dark)" srcset="./assets/logo-dark.png">
+       <img src="./assets/logo-light.png" width="600" alt="MarzbanX">
+     </picture>
+   </p>
 
 <p align="center">
   Панель управления прокси на базе <a href="https://github.com/XTLS/Xray-core">Xray-core</a> — форк
