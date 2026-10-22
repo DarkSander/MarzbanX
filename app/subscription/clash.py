@@ -96,46 +96,10 @@ class ClashConfiguration(object):
 
         return config
 
-    def ws_config(
-            self,
-            path="",
-            host="",
-            max_early_data=None,
-            early_data_header_name="",
-            is_httpupgrade: bool = False,
-            random_user_agent: bool = False,
-    ):
-        config = copy.deepcopy(self.settings.get("ws-opts", {}))
-        if (host or random_user_agent) and "headers" not in config:
-            config["headers"] = {}
-        if path:
-            config["path"] = path
-        if host:
-            config["headers"]["Host"] = host
-        if random_user_agent:
-            config["headers"]["User-Agent"] = choice(self.user_agent_list)
-        if max_early_data and not is_httpupgrade:
-            config["max-early-data"] = max_early_data
-            config["early-data-header-name"] = early_data_header_name
-        if is_httpupgrade:
-            config["v2ray-http-upgrade"] = True
-            config["v2ray-http-upgrade-fast-open"] = True
-
-        return config
-
     def grpc_config(self, path=""):
         config = copy.deepcopy(self.settings.get("grpc-opts", {}))
         if path:
             config["grpc-service-name"] = path
-
-        return config
-
-    def h2_config(self, path="", host=""):
-        config = copy.deepcopy(self.settings.get("h2-opts", {}))
-        if path:
-            config["path"] = path
-        if host:
-            config["host"] = [host]
 
         return config
 
@@ -173,15 +137,8 @@ class ClashConfiguration(object):
 
         if type == 'shadowsocks':
             type = 'ss'
-        if network in ("http", "h2", "h3"):
-            network = "h2"
         if network in ('tcp', 'raw') and headers == 'http':
             network = 'http'
-        if network == 'httpupgrade':
-            network = 'ws'
-            is_httpupgrade = True
-        else:
-            is_httpupgrade = False
         node = {
             'name': remark,
             'type': type,
@@ -191,24 +148,12 @@ class ClashConfiguration(object):
             'udp': udp
         }
 
-        if "?ed=" in path:
-            path, max_early_data = path.split("?ed=")
-            max_early_data, = max_early_data.split("/")
-            max_early_data = int(max_early_data)
-            early_data_header_name = "Sec-WebSocket-Protocol"
-        else:
-            max_early_data = None
-            early_data_header_name = ""
-
         if type == 'ss':  # shadowsocks
             return node
 
         if tls:
             node['tls'] = True
-            if type == 'trojan':
-                node['sni'] = sni
-            else:
-                node['servername'] = sni
+            node['servername'] = sni
             if alpn:
                 node['alpn'] = alpn.split(',')
             if ais:
@@ -221,21 +166,8 @@ class ClashConfiguration(object):
                 random_user_agent=random_user_agent,
             )
 
-        elif network == 'ws':
-            net_opts = self.ws_config(
-                path=path,
-                host=host,
-                max_early_data=max_early_data,
-                early_data_header_name=early_data_header_name,
-                is_httpupgrade=is_httpupgrade,
-                random_user_agent=random_user_agent,
-            )
-
         elif network == 'grpc' or network == 'gun':
             net_opts = self.grpc_config(path=path)
-
-        elif network == 'h2':
-            net_opts = self.h2_config(path=path, host=host)
 
         elif network in ('tcp', 'raw'):
             net_opts = self.tcp_config(path=path, host=host)
@@ -254,8 +186,8 @@ class ClashConfiguration(object):
         return node
 
     def add(self, remark: str, address: str, inbound: dict, settings: dict):
-        # not supported by clash
-        if inbound['network'] in ("kcp", "splithttp", "xhttp"):
+        # classic Clash has no VLESS and no Shadowsocks 2022 ciphers
+        if inbound['protocol'] != 'shadowsocks' or inbound.get('ss2022_method'):
             return
 
         proxy_remark = self._remark_validation(remark)
@@ -279,20 +211,8 @@ class ClashConfiguration(object):
             random_user_agent=inbound.get("random_user_agent")
         )
 
-        if inbound['protocol'] == 'vmess':
-            node['uuid'] = settings['id']
-            node['alterId'] = 0
-            node['cipher'] = 'auto'
-
-        elif inbound['protocol'] == 'trojan':
-            node['password'] = settings['password']
-
-        elif inbound['protocol'] == 'shadowsocks':
-            node['password'] = settings['password']
-            node['cipher'] = settings['method']
-
-        else:
-            return
+        node['password'] = settings['password']
+        node['cipher'] = settings['method']
 
         self.data['proxies'].append(node)
         self.proxy_remarks.append(proxy_remark)
@@ -346,7 +266,7 @@ class ClashMetaConfiguration(ClashConfiguration):
 
     def add(self, remark: str, address: str, inbound: dict, settings: dict):
         # not supported by clash-meta
-        if inbound['network'] in ("kcp", "splithttp", "xhttp") or (inbound['network'] == "quic" and inbound["header_type"] != "none"):
+        if inbound['network'] in ("splithttp", "xhttp"):
             return
 
         proxy_remark = self._remark_validation(remark)
@@ -373,19 +293,11 @@ class ClashMetaConfiguration(ClashConfiguration):
             random_user_agent=inbound.get("random_user_agent")
         )
 
-        if inbound['protocol'] == 'vmess':
-            node['uuid'] = settings['id']
-            node['alterId'] = 0
-            node['cipher'] = 'auto'
-
-        elif inbound['protocol'] == 'vless':
+        if inbound['protocol'] == 'vless':
             node['uuid'] = settings['id']
 
-            if inbound['network'] in ('tcp', 'raw', 'kcp') and inbound['header_type'] != 'http' and inbound['tls'] != 'none':
+            if inbound['network'] in ('tcp', 'raw') and inbound['header_type'] != 'http' and inbound['tls'] != 'none':
                 node['flow'] = settings.get('flow', '')
-
-        elif inbound['protocol'] == 'trojan':
-            node['password'] = settings['password']
 
         elif inbound['protocol'] == 'shadowsocks':
             node['password'] = settings['password']

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from collections import defaultdict
 from copy import deepcopy
 from pathlib import PosixPath
@@ -11,11 +12,54 @@ from sqlalchemy import func
 
 from app.db import GetDB
 from app.db import models as db_models
-from app.models.proxy import ProxyTypes
+from app.models.proxy import (
+    REMOVED_PROTOCOLS,
+    SS2022_METHODS,
+    VLESS_NETWORKS,
+    ProxyTypes,
+    decode_ss2022_key,
+    ss2022_user_key,
+)
 from app.models.user import UserStatus
-from app.utils.crypto import derive_wireguard_public_key, get_cert_SANs
+from app.utils.crypto import get_cert_SANs
 from config import DEBUG, XRAY_EXCLUDE_INBOUND_TAGS, XRAY_FALLBACKS_INBOUND_TAG
-from xray_api.types.account import WireGuardAccount
+
+logger = logging.getLogger("uvicorn.error")
+
+
+def unsupported_inbound_reason(inbound: dict):
+    """Why MarzbanX won't manage this inbound's users, or None if it will."""
+    protocol = inbound.get('protocol')
+    if protocol in REMOVED_PROTOCOLS:
+        return f"protocol \"{protocol}\" is not supported, use VLESS or Shadowsocks"
+
+    if protocol == ProxyTypes.VLESS.value:
+        net = (inbound.get('streamSettings') or {}).get('network', 'tcp')
+        if net not in VLESS_NETWORKS:
+            return f"VLESS transport \"{net}\" is not supported, use RAW (TCP), XHTTP or gRPC"
+
+    if protocol == ProxyTypes.Shadowsocks.value:
+        settings = inbound.get('settings') or {}
+        method = settings.get('method') or ''
+        if method.startswith('2022-'):
+            if method not in SS2022_METHODS:
+                return (f"Shadowsocks method \"{method}\" doesn't support multiple users, "
+                        f"use one of: {', '.join(SS2022_METHODS)}")
+            size = SS2022_METHODS[method]
+            if not decode_ss2022_key(settings.get('password') or '', size):
+                return (f"settings.password must be a base64 key of {size} bytes for {method} "
+                        "(use the key generator in Core Settings)")
+
+    return None
+
+
+def supports_xtls_flow(inbound: dict) -> bool:
+    """XTLS Vision only works over RAW (TCP) with TLS or REALITY."""
+    return (
+        inbound.get('network', 'tcp') in ('tcp', 'raw')
+        and inbound.get('tls') in ('tls', 'reality')
+        and inbound.get('header_type') != 'http'
+    )
 
 
 def merge_dicts(a, b):  # B will override A dictionary key and values
@@ -57,6 +101,8 @@ class XRayConfig(dict):
         self.inbounds = []
         self.inbounds_by_protocol = {}
         self.inbounds_by_tag = {}
+        # tag -> reason, for inbounds the panel refuses to manage
+        self.unsupported_inbounds = {}
         self._fallbacks_inbound = self.get_inbound(XRAY_FALLBACKS_INBOUND_TAG)
         self._resolve_inbounds()
 
@@ -143,22 +189,23 @@ class XRayConfig(dict):
 
     def _resolve_inbounds(self):
         for inbound in self['inbounds']:
-            if not inbound['protocol'] in ProxyTypes._value2member_map_:
+            if inbound['tag'] in XRAY_EXCLUDE_INBOUND_TAGS:
                 continue
 
-            if inbound['tag'] in XRAY_EXCLUDE_INBOUND_TAGS:
+            reason = unsupported_inbound_reason(inbound)
+            if reason:
+                self.unsupported_inbounds[inbound['tag']] = reason
+                logger.warning(f"Inbound \"{inbound['tag']}\" is ignored by MarzbanX: {reason}")
+                continue
+
+            if not inbound['protocol'] in ProxyTypes._value2member_map_:
                 continue
 
             if not inbound.get('settings'):
                 inbound['settings'] = {}
 
-            is_wireguard = inbound['protocol'] == ProxyTypes.WireGuard.value
-            if is_wireguard:
-                if not inbound['settings'].get('peers'):
-                    inbound['settings']['peers'] = []
-            else:
-                if not inbound['settings'].get('clients'):
-                    inbound['settings']['clients'] = []
+            if not inbound['settings'].get('clients'):
+                inbound['settings']['clients'] = []
 
             settings = {
                 "tag": inbound["tag"],
@@ -192,21 +239,13 @@ class XRayConfig(dict):
                 if encryption:
                     settings['encryption'] = encryption
 
-            # WireGuard has no streamSettings/TLS layer of its own: the
-            # inbound's own public key (derived from its secretKey) is what
-            # clients need to connect, and is exposed for subscriptions here.
-            if is_wireguard:
-                settings['network'] = 'wireguard'
-                secret_key = inbound['settings'].get('secretKey')
-                if secret_key:
-                    settings['wg_pubkey'] = derive_wireguard_public_key(secret_key)
-                address = inbound['settings'].get('address') or []
-                settings['wg_address'] = address[0].split('/')[0] if address else ""
-                settings['wg_mtu'] = inbound['settings'].get('mtu', 1420)
-                self.inbounds.append(settings)
-                self.inbounds_by_tag[inbound['tag']] = settings
-                self.inbounds_by_protocol.setdefault(inbound['protocol'], []).append(settings)
-                continue
+            # Shadowsocks 2022: the cipher and the server key are shared by
+            # every user of the inbound, clients need both.
+            if inbound['protocol'] == ProxyTypes.Shadowsocks.value:
+                method = inbound['settings'].get('method') or ''
+                if method in SS2022_METHODS:
+                    settings['ss2022_method'] = method
+                    settings['ss2022_server_key'] = inbound['settings']['password']
 
             # stream settings
             if stream := inbound.get('streamSettings'):
@@ -296,39 +335,12 @@ class XRayConfig(dict):
                     if host and isinstance(host, list):
                         settings['host'] = host
 
-                elif net == 'ws':
-                    path = net_settings.get('path', '')
-                    host = net_settings.get('host', '') or net_settings.get('headers', {}).get('Host')
-
-                    settings['header_type'] = ''
-
-                    if isinstance(path, list) or isinstance(host, list):
-                        raise ValueError(f"Settings of {inbound['tag']} for path and host must be str, not list\n"
-                                         "https://xtls.github.io/config/transports/websocket.html#websocketobject")
-
-                    if isinstance(path, str):
-                        settings['path'] = path
-
-                    if isinstance(host, str):
-                        settings['host'] = [host]
-
-                    settings["heartbeatPeriod"] = net_settings.get('heartbeatPeriod', 0)
                 elif net == 'grpc' or net == 'gun':
                     settings['header_type'] = ''
                     settings['path'] = net_settings.get('serviceName', '')
                     host = net_settings.get('authority', '')
                     settings['host'] = [host]
                     settings['multiMode'] = net_settings.get('multiMode', False)
-
-                elif net == 'quic':
-                    settings['header_type'] = net_settings.get('header', {}).get('type', '')
-                    settings['path'] = net_settings.get('key', '')
-                    settings['host'] = [net_settings.get('security', '')]
-
-                elif net == 'httpupgrade':
-                    settings['path'] = net_settings.get('path', '')
-                    host = net_settings.get('host', '')
-                    settings['host'] = [host]
 
                 elif net in ('splithttp', 'xhttp'):
                     settings['path'] = net_settings.get('path', '')
@@ -342,28 +354,6 @@ class XRayConfig(dict):
                     settings["mode"] = net_settings.get("mode", "auto")
                     settings["noGRPCHeader"] = net_settings.get("noGRPCHeader", False)
                     settings["keepAlivePeriod"] = net_settings.get("keepAlivePeriod", 0)
-
-                elif net == 'kcp':
-                    header = net_settings.get('header', {})
-
-                    settings['header_type'] = header.get('type', '')
-                    settings['host'] = header.get('domain', '')
-                    settings['path'] = net_settings.get('seed', '')
-
-                elif net in ("http", "h2", "h3"):
-                    net_settings = stream.get("httpSettings", {})
-
-                    settings['host'] = net_settings.get('host') or net_settings.get('Host', '')
-                    settings['path'] = net_settings.get('path', '')
-
-                else:
-                    settings['path'] = net_settings.get('path', '')
-                    host = net_settings.get(
-                        'host', {}) or net_settings.get('Host', {})
-                    if host and isinstance(host, str):
-                        settings['host'] = host
-                    elif host and isinstance(host, list):
-                        settings['host'] = host[0]
 
             self.inbounds.append(settings)
             self.inbounds_by_tag[inbound['tag']] = settings
@@ -430,28 +420,10 @@ class XRayConfig(dict):
                 if not inbounds:
                     continue
 
-                is_wireguard = proxy_type == ProxyTypes.WireGuard.value
-
                 for inbound in inbounds:
                     resolved_settings = config.get_inbound(inbound['tag'])['settings']
-
-                    if is_wireguard:
-                        peers = resolved_settings['peers']
-
-                        for row in rows:
-                            user_id, username, settings, excluded_inbound_tags = row
-
-                            if excluded_inbound_tags and inbound['tag'] in excluded_inbound_tags:
-                                continue
-
-                            account = WireGuardAccount(email=f"{user_id}.{username}", **settings)
-                            peers.append({
-                                "publicKey": account.public_key,
-                                "allowedIPs": [f"{account.address}/32"]
-                            })
-                        continue
-
                     clients = resolved_settings['clients']
+                    ss2022_method = inbound.get('ss2022_method')
 
                     for row in rows:
                         user_id, username, settings, excluded_inbound_tags = row
@@ -459,23 +431,20 @@ class XRayConfig(dict):
                         if excluded_inbound_tags and inbound['tag'] in excluded_inbound_tags:
                             continue
 
+                        if ss2022_method:
+                            # the cipher is set on the inbound, users only have a key
+                            clients.append({
+                                "email": f"{user_id}.{username}",
+                                "password": ss2022_user_key(settings['password'], ss2022_method),
+                            })
+                            continue
+
                         client = {
                             "email": f"{user_id}.{username}",
                             **settings
                         }
 
-                        # XTLS currently only supports transmission methods of TCP and mKCP
-                        if client.get('flow') and (
-                                inbound.get('network', 'tcp') not in ('tcp', 'raw', 'kcp')
-                                or
-                                (
-                                    inbound.get('network', 'tcp') in ('tcp', 'raw', 'kcp')
-                                    and
-                                    inbound.get('tls') not in ('tls', 'reality')
-                                )
-                                or
-                                inbound.get('header_type') == 'http'
-                        ):
+                        if client.get('flow') and not supports_xtls_flow(inbound):
                             del client['flow']
 
                         clients.append(client)

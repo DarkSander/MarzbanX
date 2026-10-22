@@ -48,7 +48,7 @@ class XRayCore:
         output = subprocess.check_output(cmd, stderr=subprocess.STDOUT).decode('utf-8')
         # Xray-core >= v25 renamed the CLI labels from "Private key"/"Public key"
         # to "PrivateKey"/"Password (PublicKey)"; match both formats. Used by
-        # x25519 (REALITY/VLESS Encryption) and wg (WireGuard) alike.
+        # x25519 (REALITY/VLESS Encryption).
         private_match = re.search(r'Private ?[Kk]ey:\s*(\S+)', output)
         public_match = re.search(r'Public ?[Kk]ey\)?:\s*(\S+)', output)
         if private_match and public_match:
@@ -59,9 +59,6 @@ class XRayCore:
 
     def get_x25519(self, private_key: str = None):
         return self._run_keypair_cmd("x25519", private_key)
-
-    def get_wg_key(self, private_key: str = None):
-        return self._run_keypair_cmd("wg", private_key)
 
     def get_mldsa65(self, seed: str = None):
         cmd = [self.executable_path, "mldsa65"]

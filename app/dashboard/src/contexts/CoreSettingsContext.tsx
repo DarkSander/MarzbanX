@@ -19,10 +19,8 @@ export type RealityKeys = {
   mldsa65_verify?: string;
 };
 
-export type WireGuardKeyPair = {
-  private_key: string;
-  public_key: string;
-};
+// cipher name -> fresh base64 server key
+export type SS2022Keys = Record<string, string>;
 
 export type SelfSignedCert = {
   certificate: string[];
@@ -37,7 +35,7 @@ type CoreSettingsStore = {
   restartCore: () => Promise<void>;
   generateVlessEncKeys: () => Promise<VlessEncKeys>;
   generateRealityKeys: (count?: number) => Promise<RealityKeys>;
-  generateWireGuardKeys: () => Promise<WireGuardKeyPair>;
+  generateSS2022Keys: () => Promise<SS2022Keys>;
   generateSelfSignedCert: (domain: string) => Promise<SelfSignedCert>;
   version: string | null;
   started: boolean | null;
@@ -76,8 +74,8 @@ export const useCoreSettings = create<CoreSettingsStore>((set) => ({
   generateRealityKeys: (count = 3) => {
     return fetch("/core/reality", { query: { count } });
   },
-  generateWireGuardKeys: () => {
-    return fetch("/core/wireguard");
+  generateSS2022Keys: () => {
+    return fetch("/core/ss2022");
   },
   generateSelfSignedCert: (domain: string) => {
     return fetch("/core/self-signed-cert", { query: { domain } });

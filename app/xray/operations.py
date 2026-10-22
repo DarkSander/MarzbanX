@@ -6,12 +6,13 @@ from sqlalchemy.exc import SQLAlchemyError
 from app import logger, xray
 from app.db import GetDB, crud
 from app.models.node import NodeStatus
-from app.models.proxy import ProxyTypes
+from app.models.proxy import ProxyTypes, ss2022_user_key
 from app.models.user import UserResponse
 from app.utils.concurrency import threaded_function
+from app.xray.config import supports_xtls_flow
 from app.xray.node import XRayNode
 from xray_api import XRay as XRayAPI
-from xray_api.types.account import Account, XTLSFlows
+from xray_api.types.account import Account, Shadowsocks2022Account, XTLSFlows
 
 if TYPE_CHECKING:
     from app.db import User as DBUser
@@ -57,70 +58,49 @@ def _alter_inbound_user(api: XRayAPI, inbound_tag: str, account: Account):
         pass
 
 
-@threaded_function
-def _restart_core_for_wireguard():
-    # WireGuard peers are static: xray-core has no HandlerService support for
-    # them, so any change to a WireGuard user requires rebuilding the config
-    # and restarting the core (and every connected node) instead of a live
-    # gRPC add/remove like every other protocol.
-    config = xray.config.include_db_users()
-    xray.core.restart(config)
-    for node_id, node in list(xray.nodes.items()):
-        if node.connected and node.started:
-            xray.operations.restart_node(node_id, config)
+def _make_account(proxy_type: ProxyTypes, inbound: dict, email: str, proxy_settings: dict) -> Account:
+    """The Xray API account of a user on one particular inbound."""
+    ss2022_method = inbound.get('ss2022_method')
+    if ss2022_method:
+        return Shadowsocks2022Account(
+            email=email,
+            key=ss2022_user_key(proxy_settings['password'], ss2022_method),
+        )
+
+    account = proxy_type.account_model(email=email, **proxy_settings)
+    if getattr(account, 'flow', None) and not supports_xtls_flow(inbound):
+        account.flow = XTLSFlows.NONE
+    return account
 
 
-def add_user(dbuser: "DBUser"):
+def _user_accounts(dbuser: "DBUser"):
+    """(inbound tag, account) for every inbound the user is enabled on."""
     user = UserResponse.model_validate(dbuser)
     email = f"{dbuser.id}.{dbuser.username}"
 
     for proxy_type, inbound_tags in user.inbounds.items():
-        if proxy_type == ProxyTypes.WireGuard:
-            _restart_core_for_wireguard()
+        proxy = user.proxies.get(proxy_type)
+        if proxy is None:
             continue
+        proxy_settings = proxy.dict(no_obj=True)
 
         for inbound_tag in inbound_tags:
             inbound = xray.config.inbounds_by_tag.get(inbound_tag, {})
+            yield inbound_tag, _make_account(proxy_type, inbound, email, proxy_settings)
 
-            try:
-                proxy_settings = user.proxies[proxy_type].dict(no_obj=True)
-            except KeyError:
-                pass
-            account = proxy_type.account_model(email=email, **proxy_settings)
 
-            # XTLS currently only supports transmission methods of TCP and mKCP
-            if getattr(account, 'flow', None) and (
-                inbound.get('network', 'tcp') not in ('tcp', 'kcp')
-                or
-                (
-                    inbound.get('network', 'tcp') in ('tcp', 'kcp')
-                    and
-                    inbound.get('tls') not in ('tls', 'reality')
-                )
-                or
-                inbound.get('header_type') == 'http'
-            ):
-                account.flow = XTLSFlows.NONE
-
-            _add_user_to_inbound(xray.api, inbound_tag, account)  # main core
-            for node in list(xray.nodes.values()):
-                if node.connected and node.started:
-                    _add_user_to_inbound(node.api, inbound_tag, account)
+def add_user(dbuser: "DBUser"):
+    for inbound_tag, account in _user_accounts(dbuser):
+        _add_user_to_inbound(xray.api, inbound_tag, account)  # main core
+        for node in list(xray.nodes.values()):
+            if node.connected and node.started:
+                _add_user_to_inbound(node.api, inbound_tag, account)
 
 
 def remove_user(dbuser: "DBUser"):
     email = f"{dbuser.id}.{dbuser.username}"
 
-    has_wireguard = any(
-        inbound.get('protocol') == ProxyTypes.WireGuard.value
-        for inbound in xray.config.inbounds_by_tag.values()
-    )
-    if has_wireguard:
-        _restart_core_for_wireguard()
-
-    for inbound_tag, inbound in xray.config.inbounds_by_tag.items():
-        if inbound.get('protocol') == ProxyTypes.WireGuard.value:
-            continue
+    for inbound_tag in xray.config.inbounds_by_tag:
         _remove_user_from_inbound(xray.api, inbound_tag, email)
         for node in list(xray.nodes.values()):
             if node.connected and node.started:
@@ -128,59 +108,18 @@ def remove_user(dbuser: "DBUser"):
 
 
 def update_user(dbuser: "DBUser"):
-    user = UserResponse.model_validate(dbuser)
     email = f"{dbuser.id}.{dbuser.username}"
 
     active_inbounds = []
-    for proxy_type, inbound_tags in user.inbounds.items():
-        active_inbounds.extend(inbound_tags)
-
-        if proxy_type == ProxyTypes.WireGuard:
-            continue
-
-        for inbound_tag in inbound_tags:
-            inbound = xray.config.inbounds_by_tag.get(inbound_tag, {})
-
-            try:
-                proxy_settings = user.proxies[proxy_type].dict(no_obj=True)
-            except KeyError:
-                pass
-            account = proxy_type.account_model(email=email, **proxy_settings)
-
-            # XTLS currently only supports transmission methods of TCP and mKCP
-            if getattr(account, 'flow', None) and (
-                inbound.get('network', 'tcp') not in ('tcp', 'kcp')
-                or
-                (
-                    inbound.get('network', 'tcp') in ('tcp', 'kcp')
-                    and
-                    inbound.get('tls') not in ('tls', 'reality')
-                )
-                or
-                inbound.get('header_type') == 'http'
-            ):
-                account.flow = XTLSFlows.NONE
-
-            _alter_inbound_user(xray.api, inbound_tag, account)  # main core
-            for node in list(xray.nodes.values()):
-                if node.connected and node.started:
-                    _alter_inbound_user(node.api, inbound_tag, account)
-
-    # There's no cheap way to tell whether this user's WireGuard membership
-    # actually changed, so if any WireGuard inbound exists at all, resync
-    # peers by rebuilding the config and restarting the core.
-    has_wireguard = any(
-        inbound.get('protocol') == ProxyTypes.WireGuard.value
-        for inbound in xray.config.inbounds_by_tag.values()
-    )
-    if has_wireguard:
-        _restart_core_for_wireguard()
+    for inbound_tag, account in _user_accounts(dbuser):
+        active_inbounds.append(inbound_tag)
+        _alter_inbound_user(xray.api, inbound_tag, account)  # main core
+        for node in list(xray.nodes.values()):
+            if node.connected and node.started:
+                _alter_inbound_user(node.api, inbound_tag, account)
 
     for inbound_tag in xray.config.inbounds_by_tag:
         if inbound_tag in active_inbounds:
-            continue
-        inbound = xray.config.inbounds_by_tag.get(inbound_tag, {})
-        if inbound.get('protocol') == ProxyTypes.WireGuard.value:
             continue
         # remove disabled inbounds
         _remove_user_from_inbound(xray.api, inbound_tag, email)

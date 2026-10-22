@@ -1,5 +1,7 @@
 import asyncio
+import base64
 import json
+import secrets
 import time
 
 import commentjson
@@ -10,6 +12,7 @@ from app import xray
 from app.db import Session, get_db
 from app.models.admin import Admin
 from app.models.core import CoreStats
+from app.models.proxy import SS2022_METHODS
 from app.utils import responses
 from app.xray import XRayConfig
 from config import XRAY_JSON
@@ -101,10 +104,14 @@ def generate_reality_keys(count: int = 3, admin: Admin = Depends(Admin.check_sud
     return xray.core.get_reality_keys(short_id_count=count)
 
 
-@router.get("/core/wireguard", responses={403: responses._403})
-def generate_wireguard_server_key(admin: Admin = Depends(Admin.check_sudo_admin)) -> dict:
-    """Generate a fresh WireGuard key pair, for a new inbound's secretKey."""
-    return xray.core.get_wg_key()
+@router.get("/core/ss2022", responses={403: responses._403})
+def generate_ss2022_server_keys(admin: Admin = Depends(Admin.check_sudo_admin)) -> dict:
+    """Generate a fresh Shadowsocks 2022 server key for every supported
+    cipher, for a new inbound's settings.password."""
+    return {
+        method: base64.b64encode(secrets.token_bytes(size)).decode()
+        for method, size in SS2022_METHODS.items()
+    }
 
 
 @router.get("/core/self-signed-cert", responses={403: responses._403})
@@ -150,6 +157,11 @@ def modify_core_config(
         config = XRayConfig(payload, api_port=xray.config.api_port)
     except ValueError as err:
         raise HTTPException(status_code=400, detail=str(err))
+
+    if config.unsupported_inbounds:
+        raise HTTPException(status_code=400, detail="; ".join(
+            f"{tag}: {reason}" for tag, reason in config.unsupported_inbounds.items()
+        ))
 
     xray.config = config
     with open(XRAY_JSON, "w") as f:

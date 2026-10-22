@@ -52,38 +52,7 @@ class V2rayShareLink(str):
         else:
             path = old_path
 
-        if inbound["protocol"] == "vmess":
-            link = self.vmess(
-                remark=remark,
-                address=address,
-                port=inbound["port"],
-                id=settings["id"],
-                net=net,
-                tls=inbound["tls"],
-                sni=inbound.get("sni", ""),
-                fp=inbound.get("fp", ""),
-                alpn=inbound.get("alpn", ""),
-                pbk=inbound.get("pbk", ""),
-                sid=inbound.get("sid", ""),
-                spx=inbound.get("spx", ""),
-                host=inbound["host"],
-                path=path,
-                type=inbound["header_type"],
-                ais=inbound.get("ais", ""),
-                fs=inbound.get("fragment_setting", ""),
-                multiMode=multi_mode,
-                sc_max_each_post_bytes=inbound.get('scMaxEachPostBytes', 1000000),
-                sc_max_concurrent_posts=inbound.get('scMaxConcurrentPosts', 100),
-                sc_min_posts_interval_ms=inbound.get('scMinPostsIntervalMs', 30),
-                x_padding_bytes=inbound.get("xPaddingBytes", "100-1000"),
-                mode=inbound.get("mode", "auto"),
-                noGRPCHeader=inbound.get("noGRPCHeader", False),
-                heartbeatPeriod=inbound.get("heartbeatPeriod", 0),
-                keepAlivePeriod=inbound.get("keepAlivePeriod", 0),
-                xmux=inbound.get("xmux", {}),
-            )
-
-        elif inbound["protocol"] == "vless":
+        if inbound["protocol"] == "vless":
             link = self.vless(
                 remark=remark,
                 address=address,
@@ -111,39 +80,6 @@ class V2rayShareLink(str):
                 x_padding_bytes=inbound.get("xPaddingBytes", "100-1000"),
                 mode=inbound.get("mode", "auto"),
                 noGRPCHeader=inbound.get("noGRPCHeader", False),
-                heartbeatPeriod=inbound.get("heartbeatPeriod", 0),
-                keepAlivePeriod=inbound.get("keepAlivePeriod", 0),
-                xmux=inbound.get("xmux", {}),
-            )
-
-        elif inbound["protocol"] == "trojan":
-            link = self.trojan(
-                remark=remark,
-                address=address,
-                port=inbound["port"],
-                password=settings["password"],
-                flow=settings.get("flow", ""),
-                net=net,
-                tls=inbound["tls"],
-                sni=inbound.get("sni", ""),
-                fp=inbound.get("fp", ""),
-                alpn=inbound.get("alpn", ""),
-                pbk=inbound.get("pbk", ""),
-                sid=inbound.get("sid", ""),
-                spx=inbound.get("spx", ""),
-                host=inbound["host"],
-                path=path,
-                type=inbound["header_type"],
-                ais=inbound.get("ais", ""),
-                fs=inbound.get("fragment_setting", ""),
-                multiMode=multi_mode,
-                sc_max_each_post_bytes=inbound.get('scMaxEachPostBytes', 1000000),
-                sc_max_concurrent_posts=inbound.get('scMaxConcurrentPosts', 100),
-                sc_min_posts_interval_ms=inbound.get('scMinPostsIntervalMs', 30),
-                x_padding_bytes=inbound.get("xPaddingBytes", "100-1000"),
-                mode=inbound.get("mode", "auto"),
-                noGRPCHeader=inbound.get("noGRPCHeader", False),
-                heartbeatPeriod=inbound.get("heartbeatPeriod", 0),
                 keepAlivePeriod=inbound.get("keepAlivePeriod", 0),
                 xmux=inbound.get("xmux", {}),
             )
@@ -157,131 +93,10 @@ class V2rayShareLink(str):
                 method=settings["method"],
             )
 
-        elif inbound["protocol"] == "hysteria":
-            link = self.hysteria2(
-                remark=remark,
-                address=address,
-                port=inbound["port"],
-                auth=settings["password"],
-                sni=inbound.get("sni", ""),
-                alpn=inbound.get("alpn", ""),
-                ais=inbound.get("ais", ""),
-            )
-
-        elif inbound["protocol"] == "wireguard":
-            link = self.wireguard(
-                remark=remark,
-                address=address,
-                port=inbound["port"],
-                private_key=settings["private_key"],
-                client_address=settings.get("_wg_address", ""),
-                server_pubkey=inbound.get("wg_pubkey", ""),
-                mtu=inbound.get("wg_mtu", 1420),
-            )
-
         else:
             return
 
         self.add_link(link=link)
-
-    @classmethod
-    def vmess(
-            cls,
-            remark: str,
-            address: str,
-            port: int,
-            id: Union[str, UUID],
-            host="",
-            net="tcp",
-            path="",
-            type="",
-            tls="none",
-            sni="",
-            fp="",
-            alpn="",
-            pbk="",
-            sid="",
-            spx="",
-            ais="",
-            fs="",
-            multiMode: bool = False,
-            sc_max_each_post_bytes: int = 1000000,
-            sc_max_concurrent_posts: int = 100,
-            sc_min_posts_interval_ms: int = 30,
-            x_padding_bytes: str = "100-1000",
-            mode: str = "auto",
-            noGRPCHeader: bool = False,
-            heartbeatPeriod: int = 0,
-            keepAlivePeriod: int = 0,
-            xmux: dict = {},
-    ):
-        payload = {
-            "add": address,
-            "aid": "0",
-            "host": host,
-            "id": str(id),
-            "net": net,
-            "path": path,
-            "port": port,
-            "ps": remark,
-            "scy": "auto",
-            "tls": tls,
-            "type": type,
-            "v": "2",
-        }
-
-        if fs:
-            payload["fragment"] = fs
-
-        if tls == "tls":
-            payload["sni"] = sni
-            payload["fp"] = fp
-            if alpn:
-                payload["alpn"] = alpn
-            if fs:
-                payload["fragment"] = fs
-            if ais:
-                payload["allowInsecure"] = 1
-
-        elif tls == "reality":
-            payload["sni"] = sni
-            payload["fp"] = fp
-            payload["pbk"] = pbk
-            payload["sid"] = sid
-            if spx:
-                payload["spx"] = spx
-
-        if net == "grpc":
-            if multiMode:
-                payload["mode"] = "multi"
-            else:
-                payload["mode"] = "gun"
-
-        elif net in ("splithttp", "xhttp"):
-            extra = {
-                "scMaxEachPostBytes": sc_max_each_post_bytes,
-                "scMaxConcurrentPosts": sc_max_concurrent_posts,
-                "scMinPostsIntervalMs": sc_min_posts_interval_ms,
-                "xPaddingBytes": x_padding_bytes,
-                "noGRPCHeader": noGRPCHeader,
-            }
-            if xmux:
-                extra["xmux"] = xmux
-            payload["type"] = mode
-            if keepAlivePeriod > 0:
-                extra["keepAlivePeriod"] = keepAlivePeriod
-            payload["extra"] = extra
-
-        elif net == "ws":
-            if heartbeatPeriod:
-                payload["heartbeatPeriod"] = heartbeatPeriod
-
-        return (
-            "vmess://"
-            + base64.b64encode(
-                json.dumps(payload, sort_keys=True).encode("utf-8")
-            ).decode()
-        )
 
     @classmethod
     def vless(cls,
@@ -289,7 +104,7 @@ class V2rayShareLink(str):
               address: str,
               port: int,
               id: Union[str, UUID],
-              net='ws',
+              net='tcp',
               path='',
               host='',
               type='',
@@ -311,7 +126,6 @@ class V2rayShareLink(str):
               x_padding_bytes: str = "100-1000",
               mode: str = "auto",
               noGRPCHeader: bool = False,
-              heartbeatPeriod: int = 0,
               keepAlivePeriod: int = 0,
               xmux: dict = {},
               ):
@@ -325,7 +139,7 @@ class V2rayShareLink(str):
             # configured on the inbound) or it refuses to connect.
             "encryption": encryption or "none",
         }
-        if flow and (tls in ('tls', 'reality') and net in ('tcp', 'raw', 'kcp') and type != 'http'):
+        if flow and (tls in ('tls', 'reality') and net in ('tcp', 'raw') and type != 'http'):
             payload['flow'] = flow
 
         if net == 'grpc':
@@ -335,10 +149,6 @@ class V2rayShareLink(str):
                 payload["mode"] = "multi"
             else:
                 payload["mode"] = "gun"
-
-        elif net == 'quic':
-            payload['key'] = path
-            payload["quicSecurity"] = host
 
         elif net in ("splithttp", "xhttp"):
             payload["path"] = path
@@ -356,16 +166,6 @@ class V2rayShareLink(str):
             if xmux:
                 extra["xmux"] = xmux
             payload["extra"] = json.dumps(extra)
-
-        elif net == 'kcp':
-            payload['seed'] = path
-            payload["host"] = host
-
-        elif net == "ws":
-            payload["path"] = path
-            payload["host"] = host
-            if heartbeatPeriod:
-                payload["heartbeatPeriod"] = heartbeatPeriod
 
         else:
             payload["path"] = path
@@ -397,158 +197,18 @@ class V2rayShareLink(str):
         )
 
     @classmethod
-    def trojan(cls,
-               remark: str,
-               address: str,
-               port: int,
-               password: str,
-               net='tcp',
-               path='',
-               host='',
-               type='',
-               flow='',
-               tls='none',
-               sni='',
-               fp='',
-               alpn='',
-               pbk='',
-               sid='',
-               spx='',
-               ais='',
-               fs="",
-               multiMode: bool = False,
-               sc_max_each_post_bytes: int = 1000000,
-               sc_max_concurrent_posts: int = 100,
-               sc_min_posts_interval_ms: int = 30,
-               x_padding_bytes: str = "100-1000",
-               mode: str = "auto",
-               noGRPCHeader: bool = False,
-               heartbeatPeriod: int = 0,
-               keepAlivePeriod: int = 0,
-               xmux: dict = {},
-               ):
-
-        payload = {
-            "security": tls,
-            "type": net,
-            "headerType": type
-        }
-        if flow and (tls in ('tls', 'reality') and net in ('tcp', 'raw', 'kcp') and type != 'http'):
-            payload['flow'] = flow
-
-        if net == 'grpc':
-            payload['serviceName'] = path
-            payload["authority"] = host
-            if multiMode:
-                payload["mode"] = "multi"
-            else:
-                payload["mode"] = "gun"
-
-        elif net in ("splithttp", "xhttp"):
-            payload["path"] = path
-            payload["host"] = host
-            payload["mode"] = mode
-            extra = {
-                "scMaxEachPostBytes": sc_max_each_post_bytes,
-                "scMaxConcurrentPosts": sc_max_concurrent_posts,
-                "scMinPostsIntervalMs": sc_min_posts_interval_ms,
-                "xPaddingBytes": x_padding_bytes,
-                "noGRPCHeader": noGRPCHeader,
-            }
-            if keepAlivePeriod > 0:
-                extra["keepAlivePeriod"] = keepAlivePeriod
-            if xmux:
-                extra["xmux"] = xmux
-            payload["extra"] = json.dumps(extra)
-
-        elif net == 'quic':
-            payload['key'] = path
-            payload["quicSecurity"] = host
-
-        elif net == 'kcp':
-            payload['seed'] = path
-            payload["host"] = host
-
-        elif net == "ws":
-            payload["path"] = path
-            payload["host"] = host
-            if heartbeatPeriod:
-                payload["heartbeatPeriod"] = heartbeatPeriod
-
-        else:
-            payload["path"] = path
-            payload["host"] = host
-
-        if tls == "tls":
-            payload["sni"] = sni
-            payload["fp"] = fp
-            if alpn:
-                payload["alpn"] = alpn
-            if fs:
-                payload["fragment"] = fs
-            if ais:
-                payload["allowInsecure"] = 1
-        elif tls == "reality":
-            payload["sni"] = sni
-            payload["fp"] = fp
-            payload["pbk"] = pbk
-            payload["sid"] = sid
-            if spx:
-                payload["spx"] = spx
-
-        return (
-            "trojan://"
-            + f"{urlparse.quote(password, safe=':')}@{address}:{port}?"
-            + urlparse.urlencode(payload)
-            + f"#{urlparse.quote(remark)}"
-        )
-
-    @classmethod
     def shadowsocks(
             cls, remark: str, address: str, port: int, password: str, method: str
     ):
+        if method.startswith("2022-"):
+            # SIP002: Shadowsocks 2022 user info is percent-encoded, not base64
+            userinfo = f"{urlparse.quote(method, safe='')}:{urlparse.quote(password, safe='')}"
+        else:
+            userinfo = base64.b64encode(f"{method}:{password}".encode()).decode()
         return (
             "ss://"
-            + base64.b64encode(f"{method}:{password}".encode()).decode()
+            + userinfo
             + f"@{address}:{port}#{urlparse.quote(remark)}"
-        )
-
-    @classmethod
-    def hysteria2(
-            cls, remark: str, address: str, port: int, auth: str,
-            sni: str = "", alpn: str = "", ais: str = ""
-    ):
-        payload = {}
-        if sni:
-            payload["sni"] = sni
-        if alpn:
-            payload["alpn"] = alpn
-        if ais:
-            payload["insecure"] = 1
-
-        return (
-            "hysteria2://"
-            + f"{urlparse.quote(auth, safe='')}@{address}:{port}/?"
-            + urlparse.urlencode(payload)
-            + f"#{urlparse.quote(remark)}"
-        )
-
-    @classmethod
-    def wireguard(
-            cls, remark: str, address: str, port: int, private_key: str,
-            client_address: str = "", server_pubkey: str = "", mtu: int = 1420
-    ):
-        payload = {
-            "publickey": server_pubkey,
-            "address": f"{client_address}/32" if client_address else "",
-            "mtu": mtu,
-        }
-
-        return (
-            "wireguard://"
-            + f"{urlparse.quote(private_key, safe='')}@{address}:{port}/?"
-            + urlparse.urlencode(payload)
-            + f"#{urlparse.quote(remark)}"
         )
 
 
@@ -628,37 +288,6 @@ class V2rayJsonConfig(str):
             realitySettings["spiderX"] = spx
 
         return realitySettings
-
-    def ws_config(self, path: str = "", host: str = "", random_user_agent: bool = False, heartbeatPeriod: int = 0) -> dict:
-        wsSettings = copy.deepcopy(self.settings.get("wsSettings", {}))
-
-        if "headers" not in wsSettings:
-            wsSettings["headers"] = {}
-        if path:
-            wsSettings["path"] = path
-        if host:
-            wsSettings["host"] = host
-        if random_user_agent:
-            wsSettings["headers"]["User-Agent"] = choice(self.user_agent_list)
-        if heartbeatPeriod:
-            wsSettings["heartbeatPeriod"] = heartbeatPeriod
-
-        return wsSettings
-
-    def httpupgrade_config(self, path: str = "", host: str = "", random_user_agent: bool = False) -> dict:
-        httpupgradeSettings = copy.deepcopy(self.settings.get("httpupgradeSettings", {}))
-
-        if "headers" not in httpupgradeSettings:
-            httpupgradeSettings["headers"] = {}
-        if path:
-            httpupgradeSettings["path"] = path
-        if host:
-            httpupgradeSettings["host"] = host
-        if random_user_agent:
-            httpupgradeSettings["headers"]["User-Agent"] = choice(
-                self.user_agent_list)
-
-        return httpupgradeSettings
 
     def splithttp_config(self, path: str = "", host: str = "", random_user_agent: bool = False,
                          sc_max_each_post_bytes: int = 1000000,
@@ -765,78 +394,6 @@ class V2rayJsonConfig(str):
 
         return config
 
-    def http_config(self, net="http", path: str = "", host: str = "", random_user_agent: bool = False) -> dict:
-        if net == "h2":
-            config = copy.deepcopy(self.settings.get("h2Settings", {
-                "header": {}
-            }))
-        elif net == "h3":
-            config = copy.deepcopy(self.settings.get("h3Settings", {
-                "header": {}
-            }))
-        else:
-            config = self.settings.get("httpSettings", {
-                "header": {}
-            })
-        if "header" not in config:
-            config["header"] = {}
-
-        config["path"] = path
-        if host:
-            config["host"] = [host]
-        else:
-            config["host"] = []
-        if random_user_agent:
-            config["headers"]["User-Agent"] = [
-                choice(self.user_agent_list)]
-
-        return config
-
-    def quic_config(self, path=None, host=None, header=None) -> dict:
-        quicSettings = copy.deepcopy(self.settings.get("quicSettings", {
-            "security": "none",
-            "header": {
-                "type": "none"
-            },
-            "key": ""
-        }))
-        if "header" not in quicSettings:
-            quicSettings["header"] = {"type": "none"}
-
-        if path:
-            quicSettings["key"] = path
-        if host:
-            quicSettings["security"] = host
-        if header:
-            quicSettings["header"]["type"] = header
-
-        return quicSettings
-
-    def kcp_config(self, seed=None, host=None, header=None) -> dict:
-        kcpSettings = copy.deepcopy(self.settings.get("kcpSettings", {
-            "header": {
-                "type": "none"
-            },
-            "mtu": 1350,
-            "tti": 50,
-            "uplinkCapacity": 12,
-            "downlinkCapacity": 100,
-            "congestion": False,
-            "readBufferSize": 2,
-            "writeBufferSize": 2,
-        }))
-        if "header" not in kcpSettings:
-            kcpSettings["header"] = {"type": "none"}
-
-        if seed:
-            kcpSettings["seed"] = seed
-        if header:
-            kcpSettings["header"]["type"] = header
-        if host:
-            kcpSettings["header"]["domain"] = host
-
-        return kcpSettings
-
     @staticmethod
     def stream_setting_config(network=None, security=None,
                               network_setting=None, tls_settings=None,
@@ -857,25 +414,6 @@ class V2rayJsonConfig(str):
         return streamSettings
 
     @staticmethod
-    def vmess_config(address=None, port=None, id=None) -> dict:
-        return {
-            "vnext": [
-                {
-                    "address": address,
-                    "port": port,
-                    "users": [
-                        {
-                            "id": id,
-                            "alterId": 0,
-                            "email": "https://gozargah.github.io/marzban/",
-                            "security": "auto"
-                        }
-                    ],
-                }
-            ]
-        }
-
-    @staticmethod
     def vless_config(address=None, port=None, id=None, flow="", encryption="") -> dict:
         return {
             "vnext": [
@@ -892,19 +430,6 @@ class V2rayJsonConfig(str):
                             "flow": flow
                         }
                     ],
-                }
-            ]
-        }
-
-    @staticmethod
-    def trojan_config(address=None, port=None, password=None) -> dict:
-        return {
-            "servers": [
-                {
-                    "address": address,
-                    "port": port,
-                    "password": password,
-                    "email": "https://gozargah.github.io/marzban/",
                 }
             ]
         }
@@ -991,31 +516,15 @@ class V2rayJsonConfig(str):
                             xmux: dict = {},
                             mode: str = "auto",
                             noGRPCHeader: bool = False,
-                            heartbeatPeriod: int = 0,
                             keepAlivePeriod: int = 0,
                             ) -> dict:
 
-        if net == "ws":
-            network_setting = self.ws_config(
-                path=path, host=host, random_user_agent=random_user_agent, heartbeatPeriod=heartbeatPeriod)
-        elif net == "grpc":
+        if net == "grpc":
             network_setting = self.grpc_config(
                 path=path, host=host, multiMode=multiMode, random_user_agent=random_user_agent)
-        elif net in ("h3", "h2", "http"):
-            network_setting = self.http_config(
-                net=net, path=path, host=host, random_user_agent=random_user_agent)
-        elif net == "kcp":
-            network_setting = self.kcp_config(
-                seed=path, host=host, header=headers)
         elif net in ("tcp", "raw") and tls != "reality":
             network_setting = self.tcp_config(
                 headers=headers, path=path, host=host, random_user_agent=random_user_agent)
-        elif net == "quic":
-            network_setting = self.quic_config(
-                path=path, host=host, header=headers)
-        elif net == "httpupgrade":
-            network_setting = self.httpupgrade_config(
-                path=path, host=host, random_user_agent=random_user_agent)
         elif net in ("splithttp", "xhttp"):
             network_setting = self.splithttp_config(path=path, host=host, random_user_agent=random_user_agent,
                                                     sc_max_each_post_bytes=sc_max_each_post_bytes,
@@ -1077,13 +586,8 @@ class V2rayJsonConfig(str):
             "protocol": protocol
         }
 
-        if inbound['protocol'] == 'vmess':
-            outbound["settings"] = self.vmess_config(address=address,
-                                                     port=port,
-                                                     id=settings['id'])
-
-        elif inbound['protocol'] == 'vless':
-            if net in ('tcp', 'raw', 'kcp') and headers != 'http' and tls in ('tls', 'reality'):
+        if inbound['protocol'] == 'vless':
+            if net in ('tcp', 'raw') and headers != 'http' and tls in ('tls', 'reality'):
                 flow = settings.get('flow', '')
             else:
                 flow = None
@@ -1094,16 +598,14 @@ class V2rayJsonConfig(str):
                                                      flow=flow,
                                                      encryption=inbound.get('encryption', ''))
 
-        elif inbound['protocol'] == 'trojan':
-            outbound["settings"] = self.trojan_config(address=address,
-                                                      port=port,
-                                                      password=settings['password'])
-
         elif inbound['protocol'] == 'shadowsocks':
             outbound["settings"] = self.shadowsocks_config(address=address,
                                                            port=port,
                                                            password=settings['password'],
                                                            method=settings['method'])
+
+        else:
+            return
 
         outbounds = [outbound]
         dialer_proxy = ''
@@ -1136,7 +638,6 @@ class V2rayJsonConfig(str):
             xmux=inbound.get("xmux", {}),
             mode=inbound.get("mode", "auto"),
             noGRPCHeader=inbound.get("noGRPCHeader", False),
-            heartbeatPeriod=inbound.get("heartbeatPeriod", 0),
             keepAlivePeriod=inbound.get("keepAlivePeriod", 0),
         )
 

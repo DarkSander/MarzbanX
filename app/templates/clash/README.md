@@ -21,16 +21,11 @@ http-opts:
 ### supported network type
 | network     | support |
 |-------------|--------:|
-| WebSocket   |       ✅ |
 | gRPC        |       ✅ |
-| http        |       ✅ |
-| h2          |       ✅ |
-| kcp         |       ❌ |
-| tcp         |       ✅ |
-| httpupgrade |      ♻️ |
-| splithttp   |       ❌ |
+| tcp (raw)   |       ✅ |
+| xhttp       |       ❌ |
 
-♻️ In clash httpupgrade it's part of WebSocket.
+Classic Clash only gets Shadowsocks (without the 2022 ciphers); VLESS needs Clash Meta.
 
 ## How To Use
 First of all, you need to set a directory for all of your templates (home, subscription page, etc.).

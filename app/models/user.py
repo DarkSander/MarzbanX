@@ -128,12 +128,12 @@ class UserCreate(User):
         "example": {
             "username": "user1234",
             "proxies": {
-                "vmess": {"id": "35e4e39c-7d5c-4f4b-8b71-558e4f37ff53"},
-                "vless": {},
+                "vless": {"id": "35e4e39c-7d5c-4f4b-8b71-558e4f37ff53"},
+                "shadowsocks": {},
             },
             "inbounds": {
-                "vmess": ["VMess TCP", "VMess Websocket"],
-                "vless": ["VLESS TCP REALITY", "VLESS GRPC REALITY"],
+                "vless": ["VLESS TCP REALITY", "VLESS XHTTP REALITY"],
+                "shadowsocks": ["Shadowsocks 2022"],
             },
             "next_plan": {
                 "data_limit": 0,
@@ -209,12 +209,12 @@ class UserModify(User):
     model_config = ConfigDict(json_schema_extra={
         "example": {
             "proxies": {
-                "vmess": {"id": "35e4e39c-7d5c-4f4b-8b71-558e4f37ff53"},
-                "vless": {},
+                "vless": {"id": "35e4e39c-7d5c-4f4b-8b71-558e4f37ff53"},
+                "shadowsocks": {},
             },
             "inbounds": {
-                "vmess": ["VMess TCP", "VMess Websocket"],
-                "vless": ["VLESS TCP REALITY", "VLESS GRPC REALITY"],
+                "vless": ["VLESS TCP REALITY", "VLESS XHTTP REALITY"],
+                "shadowsocks": ["Shadowsocks 2022"],
             },
             "next_plan": {
                 "data_limit": 0,

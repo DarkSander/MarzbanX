@@ -342,24 +342,6 @@ const RadioCard: FC<
               })}
             </SimpleGrid>
           </VStack>
-          {title === "vmess" && isSelected && (
-            <VStack alignItems="flex-start" w="full">
-              <FormControl height="66px">
-                <Text fontSize="sm" pb={1}>
-                  ID
-                </Text>
-                <Input
-                  fontSize="xs"
-                  size="sm"
-                  borderRadius="6px"
-                  pl={2}
-                  pr={2}
-                  placeholder={t("userDialog.generatedByDefault")}
-                  {...form.register("proxies.vmess.id")}
-                />
-              </FormControl>
-            </VStack>
-          )}
           {title === "vless" && isSelected && (
             <VStack alignItems="flex-start" w="full">
               <FormControl height="66px">
@@ -392,24 +374,6 @@ const RadioCard: FC<
                     </option>
                   ))}
                 </Select>
-              </FormControl>
-            </VStack>
-          )}
-          {title === "trojan" && isSelected && (
-            <VStack alignItems="flex-start" w="full">
-              <FormControl height="66px">
-                <Text fontSize="sm" pb={1}>
-                  {t("password")}
-                </Text>
-                <Input
-                  fontSize="xs"
-                  size="sm"
-                  borderRadius="6px"
-                  pl={2}
-                  pr={2}
-                  placeholder={t("userDialog.generatedByDefault")}
-                  {...form.register("proxies.trojan.password")}
-                />
               </FormControl>
             </VStack>
           )}
@@ -446,6 +410,9 @@ const RadioCard: FC<
                   ))}
                 </Select>
               </FormControl>
+              <Text fontSize="xs" opacity={0.7} pb={2}>
+                {t("userDialog.ss2022Hint")}
+              </Text>
             </VStack>
           )}
         </VStack>

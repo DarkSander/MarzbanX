@@ -1,21 +1,19 @@
+import base64
+import binascii
+import hashlib
 import json
 import re
 from enum import Enum
 from typing import Optional, Union
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from app.utils.crypto import derive_wireguard_public_key, generate_wireguard_keypair
 from app.utils.system import random_password
 from xray_api.types.account import (
-    HysteriaAccount,
     ShadowsocksAccount,
     ShadowsocksMethods,
-    TrojanAccount,
     VLESSAccount,
-    VMessAccount,
-    WireGuardAccount,
     XTLSFlows,
 )
 
@@ -24,49 +22,61 @@ FRAGMENT_PATTERN = re.compile(r'^((\d{1,4}-\d{1,4})|(\d{1,4})),((\d{1,3}-\d{1,3}
 NOISE_PATTERN = re.compile(
     r'^(rand:(\d{1,4}-\d{1,4}|\d{1,4})|str:.+|hex:.+|base64:.+)(,(\d{1,4}-\d{1,4}|\d{1,4}))?(&(rand:(\d{1,4}-\d{1,4}|\d{1,4})|str:.+|hex:.+|base64:.+)(,(\d{1,4}-\d{1,4}|\d{1,4}))?)*$')
 
+# MarzbanX only keeps protocols and transports that hold up against DPI.
+# Inbounds that use anything else stay in the Xray config untouched, but the
+# panel doesn't manage their users (see XRayConfig._resolve_inbounds).
+REMOVED_PROTOCOLS = ("vmess", "trojan", "hysteria", "wireguard")
+VLESS_NETWORKS = ("tcp", "raw", "xhttp", "splithttp", "grpc", "gun")
+
+# Shadowsocks 2022 ciphers that Xray-core supports with multiple users on one
+# inbound, mapped to their key size in bytes.
+SS2022_METHODS = {
+    "2022-blake3-aes-128-gcm": 16,
+    "2022-blake3-aes-256-gcm": 32,
+}
+
+
+def decode_ss2022_key(key: str, size: int) -> Optional[bytes]:
+    """Return the raw bytes of a base64 SS-2022 key, or None when the string
+    isn't standard base64 of exactly `size` bytes."""
+    try:
+        raw = base64.b64decode(key, validate=True)
+    except (binascii.Error, ValueError):
+        return None
+    return raw if len(raw) == size else None
+
+
+def ss2022_user_key(password: str, method: str) -> str:
+    """The per-user key for an SS-2022 inbound. Users keep a single
+    Shadowsocks password for both classic and 2022 inbounds: if it already is
+    a valid key for this cipher it is used as is, otherwise a key of the
+    right size is derived from it."""
+    size = SS2022_METHODS[method]
+    if decode_ss2022_key(password, size):
+        return password
+    digest = hashlib.sha256(f"marzbanx-ss2022:{password}".encode()).digest()
+    return base64.b64encode(digest[:size]).decode()
+
 
 class ProxyTypes(str, Enum):
     # proxy_type = protocol
 
-    VMess = "vmess"
     VLESS = "vless"
-    Trojan = "trojan"
     Shadowsocks = "shadowsocks"
-    # This is the Hysteria2 protocol; Xray-core's own identifier for it is
-    # just "hysteria" (member name kept lowercase-matching so the
-    # func.lower(Proxy.type) lookup in xray/config.py keeps working).
-    Hysteria = "hysteria"
-    WireGuard = "wireguard"
 
     @property
     def account_model(self):
-        if self == self.VMess:
-            return VMessAccount
         if self == self.VLESS:
             return VLESSAccount
-        if self == self.Trojan:
-            return TrojanAccount
         if self == self.Shadowsocks:
             return ShadowsocksAccount
-        if self == self.Hysteria:
-            return HysteriaAccount
-        if self == self.WireGuard:
-            return WireGuardAccount
 
     @property
     def settings_model(self):
-        if self == self.VMess:
-            return VMessSettings
         if self == self.VLESS:
             return VLESSSettings
-        if self == self.Trojan:
-            return TrojanSettings
         if self == self.Shadowsocks:
             return ShadowsocksSettings
-        if self == self.Hysteria:
-            return HysteriaSettings
-        if self == self.WireGuard:
-            return WireGuardSettings
 
 
 class ProxySettings(BaseModel, use_enum_values=True):
@@ -80,13 +90,6 @@ class ProxySettings(BaseModel, use_enum_values=True):
         return super().dict(**kwargs)
 
 
-class VMessSettings(ProxySettings):
-    id: UUID = Field(default_factory=uuid4)
-
-    def revoke(self):
-        self.id = uuid4()
-
-
 class VLESSSettings(ProxySettings):
     id: UUID = Field(default_factory=uuid4)
     flow: XTLSFlows = XTLSFlows.NONE
@@ -95,41 +98,14 @@ class VLESSSettings(ProxySettings):
         self.id = uuid4()
 
 
-class TrojanSettings(ProxySettings):
-    password: str = Field(default_factory=random_password)
-    flow: XTLSFlows = XTLSFlows.NONE
-
-    def revoke(self):
-        self.password = random_password()
-
-
 class ShadowsocksSettings(ProxySettings):
     password: str = Field(default_factory=random_password)
+    # Only used by classic Shadowsocks inbounds; SS-2022 inbounds set the
+    # cipher for everyone and derive the user's key from the password.
     method: ShadowsocksMethods = ShadowsocksMethods.CHACHA20_POLY1305
 
     def revoke(self):
         self.password = random_password()
-
-
-class HysteriaSettings(ProxySettings):
-    password: str = Field(default_factory=random_password)
-
-    def revoke(self):
-        self.password = random_password()
-
-
-class WireGuardSettings(ProxySettings):
-    private_key: str = Field(default_factory=lambda: generate_wireguard_keypair()[0])
-    public_key: str = ""
-
-    @model_validator(mode="after")
-    def fill_public_key(self):
-        if not self.public_key:
-            self.public_key = derive_wireguard_public_key(self.private_key)
-        return self
-
-    def revoke(self):
-        self.private_key, self.public_key = generate_wireguard_keypair()
 
 
 class ProxyHostSecurity(str, Enum):

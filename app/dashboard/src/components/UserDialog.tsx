@@ -120,11 +120,7 @@ const getDefaultValues = (): FormType => {
     inbounds,
     proxies: {
       vless: { id: "", flow: "" },
-      vmess: { id: "" },
-      trojan: { password: "" },
       shadowsocks: { password: "", method: "chacha20-ietf-poly1305" },
-      hysteria: { password: "" },
-      wireguard: {},
     },
   };
 };
@@ -160,12 +156,9 @@ const baseSchema = {
           delete obj[key];
         }
       };
-      deleteIfEmpty(ins.vmess, "id");
       deleteIfEmpty(ins.vless, "id");
-      deleteIfEmpty(ins.trojan, "password");
       deleteIfEmpty(ins.shadowsocks, "password");
       deleteIfEmpty(ins.shadowsocks, "method");
-      deleteIfEmpty(ins.hysteria, "password");
       return ins;
     }),
   data_limit: z
@@ -739,28 +732,12 @@ export const UserDialog: FC<UserDialogProps> = () => {
                           <RadioGroup
                             list={[
                               {
-                                title: "vmess",
-                                description: t("userDialog.vmessDesc"),
-                              },
-                              {
                                 title: "vless",
                                 description: t("userDialog.vlessDesc"),
                               },
                               {
-                                title: "trojan",
-                                description: t("userDialog.trojanDesc"),
-                              },
-                              {
                                 title: "shadowsocks",
                                 description: t("userDialog.shadowsocksDesc"),
-                              },
-                              {
-                                title: "hysteria",
-                                description: t("userDialog.hysteriaDesc"),
-                              },
-                              {
-                                title: "wireguard",
-                                description: t("userDialog.wireguardDesc"),
                               },
                             ]}
                             disabled={disabled}

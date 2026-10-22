@@ -1,3 +1,3 @@
-from .account import (Account, ShadowsocksAccount, TrojanAccount, VLESSAccount,
-                      VMessAccount)
+from .account import (Account, Shadowsocks2022Account, ShadowsocksAccount,
+                      VLESSAccount)
 from .message import Message, TypedMessage

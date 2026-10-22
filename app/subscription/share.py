@@ -9,9 +9,8 @@ from typing import TYPE_CHECKING, List, Literal, Union
 from jdatetime import date as jd
 
 from app import xray
-from app.models.proxy import ProxyTypes
+from app.models.proxy import ss2022_user_key
 from app.utils.system import get_public_ip, get_public_ipv6, readable_size
-from xray_api.types.account import WireGuardAccount
 
 from . import *
 
@@ -317,10 +316,14 @@ def process_inbounds_and_tags(
                 )
 
                 settings_dict = settings.model_dump()
-                if protocol == ProxyTypes.WireGuard:
-                    user_id = format_variables.get("USER_ID")
-                    account = WireGuardAccount(email=f"{user_id}.", **settings_dict)
-                    settings_dict["_wg_address"] = account.address
+                if ss2022_method := inbound.get("ss2022_method"):
+                    # Shadowsocks 2022 clients of a multi-user inbound
+                    # connect with "<server key>:<user key>".
+                    user_key = ss2022_user_key(settings_dict["password"], ss2022_method)
+                    settings_dict = {
+                        "method": ss2022_method,
+                        "password": f'{inbound["ss2022_server_key"]}:{user_key}',
+                    }
 
                 conf.add(
                     remark=host["remark"].format_map(format_variables),

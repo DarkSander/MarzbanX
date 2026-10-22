@@ -46,7 +46,7 @@ import { useNodesQuery } from "contexts/NodesContext";
 import { RealityKeysButton } from "./RealityKeysModal";
 import { SelfSignedCertButton } from "./SelfSignedCertModal";
 import { VlessEncButton } from "./VlessEncModal";
-import { WireGuardKeyButton } from "./WireGuardKeyModal";
+import { SS2022KeyButton } from "./SS2022KeyModal";
 
 export const MAX_NUMBER_OF_LOGS = 500;
 
@@ -252,7 +252,7 @@ const CoreSettingModalContent: FC = () => {
             <HStack gap={2}>
               <RealityKeysButton />
               <VlessEncButton />
-              <WireGuardKeyButton />
+              <SS2022KeyButton />
               <SelfSignedCertButton />
               <Tooltip label="Xray Version" placement="top">
                 <Badge height="100%" textTransform="lowercase">

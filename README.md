@@ -22,6 +22,7 @@
 - [Установка](#установка)
 - [Первый вход и HTTPS для панели](#первый-вход-и-https-для-панели)
 - [Сертификаты Let's Encrypt через Cloudflare](#сертификаты-lets-encrypt-через-cloudflare)
+- [Протоколы](#протоколы)
 - [Маршрутизация в подписке (Happ)](#маршрутизация-в-подписке-happ)
 - [Команда marzbanx](#команда-marzbanx)
 - [Настройки (.env)](#настройки-env)
@@ -37,7 +38,7 @@ MarzbanX — веб-панель для управления пользоват�
 
 Возможности, унаследованные от Marzban:
 
-- протоколы **VLESS**, **VMess**, **Trojan**, **Shadowsocks**; **TLS** и **REALITY**
+- протоколы **VLESS** и **Shadowsocks**; **TLS** и **REALITY** (см. [Протоколы](#протоколы))
 - несколько протоколов на одного пользователя, много пользователей на одном инбаунде, несколько инбаундов на одном порту (fallbacks)
 - лимиты по трафику и сроку, периодический сброс трафика (день, неделя, месяц)
 - подписки для V2rayNG, v2rayN, Streisand, Happ, sing-box, Clash / Clash Meta
@@ -47,6 +48,7 @@ MarzbanX — веб-панель для управления пользоват�
 
 # Чем отличается от Marzban
 
+- **Только устойчивые к блокировкам протоколы** — VLESS (RAW/XHTTP/gRPC) и Shadowsocks, включая Shadowsocks 2022. См. [раздел ниже](#протоколы).
 - **Свежий Xray-core** — версия задаётся при сборке образа (`XRAY_VERSION` в `Dockerfile`), geoip/geosite берутся из [Loyalsoldier/v2ray-rules-dat](https://github.com/Loyalsoldier/v2ray-rules-dat).
 - **Новый дизайн** панели.
 - **Сертификаты Let's Encrypt прямо из панели** — выпуск через DNS-01 в Cloudflare, автопродление, установка в инбаунды Xray и в саму панель. См. [раздел ниже](#сертификаты-lets-encrypt-через-cloudflare).
@@ -155,6 +157,39 @@ ACME_DIRECTORY_URL = "https://acme-staging-v02.api.letsencrypt.org/directory"
 ```
 
 Для REALITY сертификат не нужен.
+
+# Протоколы
+
+MarzbanX оставляет только то, что держится под DPI:
+
+| Протокол | Транспорт | Защита |
+|---|---|---|
+| **VLESS** | RAW (TCP) + Vision | REALITY или TLS — основной вариант |
+| **VLESS** | XHTTP | REALITY, TLS или через CDN |
+| **VLESS** | gRPC | REALITY или TLS |
+| **Shadowsocks** | TCP/UDP | шифры `2022-blake3-aes-128-gcm` / `2022-blake3-aes-256-gcm` (SS-2022) или классические AEAD |
+
+VMess, Trojan, Hysteria2, WireGuard и транспорты WebSocket, HTTPUpgrade, mKCP, QUIC, HTTP/2 убраны. Инбаунды с ними панель не обслуживает: при старте в логе появляется предупреждение, а сохранить такой конфиг в Core Settings нельзя. При обновлении миграция удаляет у пользователей записи VMess/Trojan/Hysteria/WireGuard. Тем, у кого после этого не осталось ни одного протокола, выдаётся VLESS — он появится в подписке после её обновления в клиенте.
+
+**Shadowsocks 2022.** Шифр и ключ сервера задаются на инбаунде, ключ сервера генерирует кнопка с замком в Core Settings:
+
+```json
+{
+  "tag": "Shadowsocks 2022",
+  "port": 8388,
+  "protocol": "shadowsocks",
+  "settings": {
+    "method": "2022-blake3-aes-128-gcm",
+    "password": "<ключ сервера из генератора>",
+    "clients": [],
+    "network": "tcp,udp"
+  }
+}
+```
+
+Ключ пользователя вычисляется из его пароля Shadowsocks, поэтому один и тот же пользователь работает и на классических, и на SS-2022 инбаундах. В подписке клиент получает пароль вида `ключ_сервера:ключ_пользователя`. SS-2022 есть в ссылках v2ray, v2ray-json, sing-box и Clash Meta; классический Clash и Outline его не поддерживают и получают только классический Shadowsocks.
+
+> Xray-core 26 помечает любой Shadowsocks и транспорт gRPC как устаревшие и советует VLESS Encryption и XHTTP. Пока они работают, но основным лучше держать VLESS.
 
 # Маршрутизация в подписке (Happ)
 

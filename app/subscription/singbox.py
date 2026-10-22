@@ -20,8 +20,6 @@ class SingBoxConfiguration(str):
     def __init__(self):
         self.proxy_remarks = []
         self.config = json.loads(render_template(SINGBOX_SUBSCRIPTION_TEMPLATE))
-        if "endpoints" not in self.config:
-            self.config["endpoints"] = []
         self.mux_template = render_template(MUX_TEMPLATE)
         user_agent_data = json.loads(render_template(USER_AGENT_TEMPLATE))
 
@@ -50,23 +48,13 @@ class SingBoxConfiguration(str):
     def add_outbound(self, outbound_data):
         self.config["outbounds"].append(outbound_data)
 
-    def add_endpoint(self, endpoint_data):
-        self.config["endpoints"].append(endpoint_data)
-
     def render(self, reverse=False):
-        urltest_types = ["vmess", "vless", "trojan", "shadowsocks", "hysteria2"]
+        urltest_types = ["vless", "shadowsocks"]
         urltest_tags = [outbound["tag"]
                         for outbound in self.config["outbounds"] if outbound["type"] in urltest_types]
-        # WireGuard has no "outbound" of its own in sing-box >= 1.11, it's
-        # configured as an "endpoint" instead, but can still be selected the
-        # same way as any regular outbound.
-        urltest_tags += [endpoint["tag"] for endpoint in self.config["endpoints"]
-                         if endpoint["type"] == "wireguard"]
         selector_types = urltest_types + ["urltest"]
         selector_tags = [outbound["tag"]
                          for outbound in self.config["outbounds"] if outbound["type"] in selector_types]
-        selector_tags += [endpoint["tag"] for endpoint in self.config["endpoints"]
-                          if endpoint["type"] == "wireguard"]
 
         for outbound in self.config["outbounds"]:
             if outbound.get("type") == "urltest":
@@ -78,9 +66,6 @@ class SingBoxConfiguration(str):
 
         if reverse:
             self.config["outbounds"].reverse()
-            self.config["endpoints"].reverse()
-        if not self.config["endpoints"]:
-            del self.config["endpoints"]
         return json.dumps(self.config, indent=4,cls=UUIDEncoder)
 
     @staticmethod
@@ -135,27 +120,6 @@ class SingBoxConfiguration(str):
 
         return config
 
-    def ws_config(self, host='', path='', random_user_agent: bool = False,
-                  max_early_data=None, early_data_header_name=None):
-        config = copy.deepcopy(self.settings.get("wsSettings", {
-            "headers": {}
-        }))
-        if "headers" not in config:
-            config["headers"] = {}
-
-        if path:
-            config["path"] = path
-        if host:
-            config["headers"]["Host"] = host
-        if random_user_agent:
-            config["headers"]["User-Agent"] = choice(self.user_agent_list)
-        if max_early_data is not None:
-            config["max_early_data"] = max_early_data
-        if early_data_header_name:
-            config["early_data_header_name"] = early_data_header_name
-
-        return config
-
     def grpc_config(self, path=''):
         config = copy.deepcopy(self.settings.get("grpcSettings", {}))
 
@@ -164,58 +128,24 @@ class SingBoxConfiguration(str):
 
         return config
 
-    def httpupgrade_config(self, host='', path='', random_user_agent: bool = False):
-        config = copy.deepcopy(self.settings.get("httpupgradeSettings", {
-            "headers": {}
-        }))
-        if "headers" not in config:
-            config["headers"] = {}
-
-        config["host"] = host
-        if path:
-            config["path"] = path
-        if random_user_agent:
-            config["headers"]["User-Agent"] = choice(self.user_agent_list)
-
-        return config
-
     def transport_config(self,
                          transport_type='',
                          host='',
                          path='',
-                         max_early_data=None,
-                         early_data_header_name=None,
                          random_user_agent: bool = False,
                          ):
 
         transport_config = {}
 
-        if transport_type:
-            if transport_type == "http":
-                transport_config = self.http_config(
-                    host=host,
-                    path=path,
-                    random_user_agent=random_user_agent,
-                )
+        if transport_type == "http":
+            transport_config = self.http_config(
+                host=host,
+                path=path,
+                random_user_agent=random_user_agent,
+            )
 
-            elif transport_type == "ws":
-                transport_config = self.ws_config(
-                    host=host,
-                    path=path,
-                    random_user_agent=random_user_agent,
-                    max_early_data=max_early_data,
-                    early_data_header_name=early_data_header_name,
-                )
-
-            elif transport_type == "grpc":
-                transport_config = self.grpc_config(path=path)
-
-            elif transport_type == "httpupgrade":
-                transport_config = self.httpupgrade_config(
-                    host=host,
-                    path=path,
-                    random_user_agent=random_user_agent,
-                )
+        elif transport_type == "grpc":
+            transport_config = self.grpc_config(path=path)
 
         transport_config['type'] = transport_type
         return transport_config
@@ -252,35 +182,18 @@ class SingBoxConfiguration(str):
             "server_port": port,
         }
 
-        if net in ('tcp', 'raw', 'kcp') and headers != 'http' and (tls or tls != 'none'):
+        if net in ('tcp', 'raw') and headers != 'http' and tls in ('tls', 'reality'):
             if flow:
                 config["flow"] = flow
 
-        if net == 'h2':
-            net = 'http'
-            alpn = 'h2'
-        elif net == 'h3':
-            net = 'http'
-            alpn = 'h3'
-        elif net in ['tcp', 'raw'] and headers == 'http':
+        if net in ['tcp', 'raw'] and headers == 'http':
             net = 'http'
 
-        if net in ['http', 'ws', 'quic', 'grpc', 'httpupgrade']:
-            max_early_data = None
-            early_data_header_name = None
-
-            if "?ed=" in path:
-                path, max_early_data = path.split("?ed=")
-                max_early_data, = max_early_data.split("/")
-                max_early_data = int(max_early_data)
-                early_data_header_name = "Sec-WebSocket-Protocol"
-
+        if net in ['http', 'grpc']:
             config['transport'] = self.transport_config(
                 transport_type=net,
                 host=host,
                 path=path,
-                max_early_data=max_early_data,
-                early_data_header_name=early_data_header_name,
                 random_user_agent=random_user_agent,
             )
 
@@ -299,37 +212,11 @@ class SingBoxConfiguration(str):
         return config
 
     def add(self, remark: str, address: str, inbound: dict, settings: dict):
-
-        if inbound['protocol'] == 'hysteria':
-            outbound = self.make_hysteria2_outbound(
-                remark=remark,
-                address=address,
-                port=inbound['port'],
-                password=settings['password'],
-                sni=inbound.get('sni', ''),
-                ais=inbound.get('ais', ''),
-            )
-            self.add_outbound(outbound)
-            return
-
-        if inbound['protocol'] == 'wireguard':
-            endpoint = self.make_wireguard_endpoint(
-                remark=remark,
-                address=address,
-                port=inbound['port'],
-                private_key=settings['private_key'],
-                client_address=settings.get('_wg_address', ''),
-                server_pubkey=inbound.get('wg_pubkey', ''),
-                mtu=inbound.get('wg_mtu', 1420),
-            )
-            self.add_endpoint(endpoint)
-            return
-
         net = inbound["network"]
         path = inbound["path"]
 
         # not supported by sing-box
-        if net in ("kcp", "splithttp", "xhttp") or (net == "quic" and inbound["header_type"] != "none"):
+        if net in ("splithttp", "xhttp"):
             return
 
         if net in ("grpc", "gun"):
@@ -360,59 +247,11 @@ class SingBoxConfiguration(str):
             mux_enable=inbound.get('mux_enable', False),
             random_user_agent=inbound.get('random_user_agent', False),)
 
-        if inbound['protocol'] == 'vmess':
+        if inbound['protocol'] == 'vless':
             outbound['uuid'] = settings['id']
-
-        elif inbound['protocol'] == 'vless':
-            outbound['uuid'] = settings['id']
-
-        elif inbound['protocol'] == 'trojan':
-            outbound['password'] = settings['password']
 
         elif inbound['protocol'] == 'shadowsocks':
             outbound['password'] = settings['password']
             outbound['method'] = settings['method']
 
         self.add_outbound(outbound)
-
-    def make_hysteria2_outbound(self, remark: str, address: str, port: int,
-                                password: str, sni: str = '', ais: str = ''):
-        remark = self._remark_validation(remark)
-        self.proxy_remarks.append(remark)
-
-        outbound = {
-            "type": "hysteria2",
-            "tag": remark,
-            "server": address,
-            "server_port": port,
-            "password": password,
-        }
-        if sni:
-            # Hysteria2 doesn't support "multiplex" (it already multiplexes
-            # over QUIC natively) or uTLS/REALITY, unlike other protocols.
-            outbound["tls"] = self.tls_config(sni=sni, tls='tls', ais=ais)
-            outbound["tls"]["enabled"] = True
-
-        return outbound
-
-    def make_wireguard_endpoint(self, remark: str, address: str, port: int,
-                                private_key: str, client_address: str = '',
-                                server_pubkey: str = '', mtu: int = 1420):
-        remark = self._remark_validation(remark)
-        self.proxy_remarks.append(remark)
-
-        return {
-            "type": "wireguard",
-            "tag": remark,
-            "address": [f"{client_address}/32"] if client_address else [],
-            "private_key": private_key,
-            "mtu": mtu,
-            "peers": [
-                {
-                    "address": address,
-                    "port": port,
-                    "public_key": server_pubkey,
-                    "allowed_ips": ["0.0.0.0/0", "::/0"],
-                }
-            ],
-        }

@@ -9,11 +9,5 @@
     "ping_timeout": "15s",
     "method": "GET",
     "headers": {}
-  },
-  "wsSettings": {
-    "headers": {}
-  },
-  "httpupgradeSettings": {
-    "headers": {}
   }
 }

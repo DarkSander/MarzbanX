@@ -30,6 +30,9 @@ class OutlineConfiguration:
     def add(self, remark: str, address: str, inbound: dict, settings: dict):
         if inbound["protocol"] != "shadowsocks":
             return
+        # Outline clients don't support Shadowsocks 2022
+        if inbound.get("ss2022_method"):
+            return
 
         outbound = self.make_outbound(
             remark=remark,
