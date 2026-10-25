@@ -1,5 +1,5 @@
 ARG PYTHON_VERSION=3.12
-ARG NODE_VERSION=20
+ARG NODE_VERSION=24
 ARG XRAY_VERSION=v26.9.9
 
 FROM node:${NODE_VERSION}-slim AS frontend
@@ -61,4 +61,4 @@ RUN ln -s /code/marzban-cli.py /usr/bin/marzban-cli \
     && chmod +x /usr/bin/marzban-cli \
     && marzban-cli completion install --shell bash
 
-CMD ["bash", "-c", "alembic upgrade head; python main.py"]
+CMD ["bash", "-c", "alembic upgrade head && exec python main.py"]
