@@ -4,6 +4,7 @@ import stat
 import threading
 import time
 from datetime import datetime, timedelta
+from typing import TYPE_CHECKING
 
 import josepy as jose
 import requests
@@ -16,6 +17,9 @@ from app import logger
 from app.db import GetDB, crud
 from app.utils.cloudflare import CloudflareError, create_txt_record, delete_txt_record, get_zone_id
 from config import ACME_DIRECTORY_URL, ACME_EMAIL, CLOUDFLARE_API_TOKEN
+
+if TYPE_CHECKING:
+    from app.db.models import Certificate
 
 USER_AGENT = "MarzbanX-ACME/1.0"
 PANEL_CERTS_DIR = "/var/lib/marzban/certs"
