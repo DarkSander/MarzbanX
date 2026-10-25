@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import base64
 import json
 import logging
+import secrets
 from collections import defaultdict
 from copy import deepcopy
 from pathlib import PosixPath
@@ -25,6 +27,9 @@ from app.utils.crypto import get_cert_SANs
 from config import DEBUG, XRAY_EXCLUDE_INBOUND_TAGS, XRAY_FALLBACKS_INBOUND_TAG
 
 logger = logging.getLogger("uvicorn.error")
+
+# "0." keeps it parseable as "{user_id}.{username}"; no user has id 0
+SS2022_PLACEHOLDER_EMAIL = "0.marzbanx-ss2022-placeholder"
 
 
 def unsupported_inbound_reason(inbound: dict):
@@ -448,6 +453,19 @@ class XRayConfig(dict):
                             del client['flow']
 
                         clients.append(client)
+
+        # Xray-core builds a Shadowsocks 2022 inbound without clients as a
+        # single-user server: it would then accept the server key alone
+        # (which every user gets in their subscription) and refuse users
+        # added later over the API. A placeholder user with a random key that
+        # is never handed out keeps the inbound in multi-user mode.
+        for inbound in self.inbounds:
+            ss2022_method = inbound.get('ss2022_method')
+            if ss2022_method:
+                config.get_inbound(inbound['tag'])['settings']['clients'].append({
+                    "email": SS2022_PLACEHOLDER_EMAIL,
+                    "password": base64.b64encode(secrets.token_bytes(SS2022_METHODS[ss2022_method])).decode(),
+                })
 
         if DEBUG:
             with open('generated_config-debug.json', 'w') as f:
