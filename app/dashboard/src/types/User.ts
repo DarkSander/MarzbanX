@@ -31,6 +31,8 @@ export type UserInbounds = {
 };
 export type User = {
   proxies: ProxyType;
+  // null = the panel default, 0 = no limit
+  device_limit?: number | null;
   expire: number | null;
   data_limit: number | null;
   data_limit_reset_strategy: DataLimitResetStrategy;
@@ -57,6 +59,7 @@ export type UserCreate = Pick<
   | "username"
   | "status"
   | "note"
+  | "device_limit"
 >;
 
 export type UserApi = {

@@ -113,12 +113,19 @@ class XRayConfig(dict):
 
         self._apply_api()
 
+    def _enable_online_stats(self):
+        """Let Xray track which IPs each user is connected from (device limit)."""
+        policy = self.setdefault("policy", {})
+        level = policy.setdefault("levels", {}).setdefault("0", {})
+        level["statsUserOnline"] = True
+
     def _apply_api(self):
         api_inbound = self.get_inbound("API_INBOUND")
         if api_inbound:
             api_inbound["listen"] = self.api_host
-            api_inbound["listen"]["address"] = self.api_host
+            api_inbound.setdefault("settings", {})["address"] = self.api_host
             api_inbound["port"] = self.api_port
+            self._enable_online_stats()
             return
 
         self["api"] = {
@@ -134,7 +141,8 @@ class XRayConfig(dict):
             "levels": {
                 "0": {
                     "statsUserUplink": True,
-                    "statsUserDownlink": True
+                    "statsUserDownlink": True,
+                    "statsUserOnline": True
                 }
             },
             "system": {

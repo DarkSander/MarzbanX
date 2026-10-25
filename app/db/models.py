@@ -92,6 +92,9 @@ class User(Base):
     # * Negative values: User won't be deleted automatically at all.
     # * NULL: Uses global settings.
     auto_delete_in_days = Column(Integer, nullable=True, default=None)
+    # devices online at once before admins are notified:
+    # NULL = DEVICE_LIMIT_DEFAULT, 0 = no limit
+    device_limit = Column(Integer, nullable=True, default=None)
 
     edit_at = Column(DateTime, nullable=True, default=None)
     last_status_change = Column(DateTime, default=datetime.utcnow, nullable=True)

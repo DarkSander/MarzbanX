@@ -2,7 +2,7 @@
 Functions for managing proxy hosts, users, user templates, nodes, and administrative tasks.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Dict, List, Optional, Tuple, Union
 
@@ -338,6 +338,70 @@ def get_user_usages(db: Session, dbuser: User, start: datetime, end: datetime) -
     return list(usages.values())
 
 
+def _naive_utc(value: datetime) -> datetime:
+    if value.tzinfo is not None:
+        value = value.astimezone(timezone.utc).replace(tzinfo=None)
+    return value
+
+
+def get_user_usage_timeline(db: Session, dbuser: User, start: datetime, end: datetime):
+    """
+    A user's traffic over time, summed over every node: per hour for ranges
+    of up to two days, per day otherwise. Buckets without traffic are
+    included with 0, so gaps show up on a chart.
+
+    Returns:
+        (period, [(bucket start, used traffic), ...]) with period "hour" or "day".
+    """
+    start, end = _naive_utc(start), _naive_utc(end)
+    period = "hour" if end - start <= timedelta(days=2) else "day"
+
+    def bucket(moment: datetime) -> datetime:
+        moment = moment.replace(minute=0, second=0, microsecond=0)
+        return moment.replace(hour=0) if period == "day" else moment
+
+    step = timedelta(hours=1) if period == "hour" else timedelta(days=1)
+    points = {}
+    moment = bucket(start)
+    while moment <= end:
+        points[moment] = 0
+        moment += step
+
+    rows = db.query(NodeUserUsage.created_at, NodeUserUsage.used_traffic).filter(
+        NodeUserUsage.user_id == dbuser.id,
+        NodeUserUsage.created_at >= start,
+        NodeUserUsage.created_at <= end,
+    )
+    for created_at, used_traffic in rows:
+        key = bucket(created_at)
+        points[key] = points.get(key, 0) + (used_traffic or 0)
+
+    return period, sorted(points.items())
+
+
+def get_top_users_usages(db: Session, start: datetime, end: datetime,
+                         admin: Optional[List[str]] = None, limit: int = 10) -> List[Tuple[str, int]]:
+    """
+    The users that used the most traffic in a date range, over every node.
+
+    Args:
+        admin: only count the users of these admins (None = everyone).
+
+    Returns:
+        [(username, used traffic), ...], biggest first.
+    """
+    query = db.query(User.username, func.sum(NodeUserUsage.used_traffic).label('traffic')) \
+        .join(NodeUserUsage, NodeUserUsage.user_id == User.id) \
+        .filter(NodeUserUsage.created_at >= _naive_utc(start),
+                NodeUserUsage.created_at <= _naive_utc(end))
+    if admin:
+        query = query.join(Admin, User.admin_id == Admin.id).filter(Admin.username.in_(admin))
+    rows = query.group_by(User.id, User.username) \
+        .order_by(func.sum(NodeUserUsage.used_traffic).desc()) \
+        .limit(limit).all()
+    return [(username, int(traffic or 0)) for username, traffic in rows if traffic]
+
+
 def get_users_count(db: Session, status: UserStatus = None, admin: Admin = None) -> int:
     """
     Retrieves the count of users based on status and admin filters.
@@ -394,6 +458,7 @@ def create_user(db: Session, user: UserCreate, admin: Admin = None) -> User:
         on_hold_expire_duration=(user.on_hold_expire_duration or None),
         on_hold_timeout=(user.on_hold_timeout or None),
         auto_delete_in_days=user.auto_delete_in_days,
+        device_limit=user.device_limit if user.device_limit is None or user.device_limit >= 0 else None,
         next_plan=NextPlan(
             data_limit=user.next_plan.data_limit,
             expire=user.next_plan.expire,
@@ -509,6 +574,9 @@ def update_user(db: Session, dbuser: User, modify: UserModify) -> User:
 
     if modify.note is not None:
         dbuser.note = modify.note or None
+
+    if modify.device_limit is not None:
+        dbuser.device_limit = modify.device_limit if modify.device_limit >= 0 else None
 
     if modify.data_limit_reset_strategy is not None:
         dbuser.data_limit_reset_strategy = modify.data_limit_reset_strategy.value

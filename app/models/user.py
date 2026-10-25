@@ -74,6 +74,9 @@ class User(BaseModel):
     on_hold_timeout: Optional[Union[datetime, None]] = Field(None, nullable=True)
 
     auto_delete_in_days: Optional[int] = Field(None, nullable=True)
+    # None = the panel default (DEVICE_LIMIT_DEFAULT), 0 = no limit.
+    # In a modify request None means "no change" and -1 resets to the default.
+    device_limit: Optional[int] = Field(None, ge=-1, nullable=True)
 
     next_plan: Optional[NextPlanModel] = Field(None, nullable=True)
 
@@ -365,3 +368,37 @@ class UserUsagesResponse(BaseModel):
 
 class UsersUsagesResponse(BaseModel):
     usages: List[UserUsageResponse]
+
+
+class UserUsagePoint(BaseModel):
+    date: datetime  # start of the hour/day, UTC
+    used_traffic: int
+
+
+class UserUsageTimelineResponse(BaseModel):
+    username: str
+    period: str  # "hour" or "day"
+    usages: List[UserUsagePoint]
+
+
+class UserTrafficRank(BaseModel):
+    username: str
+    used_traffic: int
+
+
+class TopUsersUsageResponse(BaseModel):
+    usages: List[UserTrafficRank]
+
+
+class UserDevice(BaseModel):
+    address: str  # IPv4 address, or IPv6 /64 network
+    since: datetime
+
+
+class UserDevicesResponse(BaseModel):
+    username: str
+    limit: int  # what applies to the user; 0 = no limit
+    user_limit: Optional[int] = None  # the user's own setting, None = default
+    default_limit: int
+    devices: List[UserDevice]
+    checked_at: Optional[datetime] = None

@@ -60,6 +60,8 @@ import { Icon } from "./Icon";
 import { Input } from "./Input";
 import { RadioGroup } from "./RadioGroup";
 import { UsageFilter, createUsageConfig } from "./UsageFilter";
+import { UserUsageTimeline } from "./UsageCharts";
+import { UserDevicesSection } from "./UserDevices";
 import { ReloadIcon } from "./Filters";
 import classNames from "classnames";
 
@@ -100,6 +102,7 @@ const formatUser = (user: User): FormType => {
       ? Number(user.on_hold_expire_duration / (24 * 60 * 60))
       : user.on_hold_expire_duration,
     selected_proxies: Object.keys(user.proxies) as ProxyKeys,
+    device_limit: user.device_limit ?? null,
   };
 };
 const getDefaultValues = (): FormType => {
@@ -117,6 +120,7 @@ const getDefaultValues = (): FormType => {
     status: "active",
     on_hold_expire_duration: null,
     note: "",
+    device_limit: null,
     inbounds,
     proxies: {
       vless: { id: "", flow: "" },
@@ -148,6 +152,15 @@ const baseSchema = {
     message: "userDialog.selectOneProtocol",
   }),
   note: z.string().nullable(),
+  // empty = the panel default (sent as -1, which also resets it on edit)
+  device_limit: z
+    .union([z.string(), z.number()])
+    .nullable()
+    .optional()
+    .transform((value) => {
+      if (value === null || value === undefined || value === "") return -1;
+      return Math.max(0, Math.floor(Number(value)));
+    }),
   proxies: z
     .record(z.string(), z.record(z.string(), z.any()))
     .transform((ins) => {
@@ -264,7 +277,9 @@ export const UserDialog: FC<UserDialogProps> = () => {
   const usageTitle = t("userDialog.total");
   const [usage, setUsage] = useState(createUsageConfig(colorMode, usageTitle));
   const [usageFilter, setUsageFilter] = useState("1m");
+  const [usageQuery, setUsageQuery] = useState<FilterUsageType>({});
   const fetchUsageWithFilter = (query: FilterUsageType) => {
+    setUsageQuery(query);
     fetchUserUsage(editingUser!, query).then((data: any) => {
       const labels = [];
       const series = [];
@@ -705,6 +720,10 @@ export const UserDialog: FC<UserDialogProps> = () => {
                           {form.formState.errors?.note?.message}
                         </FormErrorMessage>
                       </FormControl>
+                      <UserDevicesSection
+                        username={isEditing ? editingUser?.username : undefined}
+                        disabled={disabled}
+                      />
                     </Flex>
                     {error && (
                       <Alert
@@ -788,6 +807,12 @@ export const UserDialog: FC<UserDialogProps> = () => {
                           type="donut"
                         />
                       </Box>
+                      {editingUser && (
+                        <UserUsageTimeline
+                          username={editingUser.username}
+                          query={usageQuery}
+                        />
+                      )}
                     </VStack>
                   </GridItem>
                 )}

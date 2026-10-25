@@ -121,3 +121,28 @@ class Stats(XRayBase):
             if stat.link == 'downlink':
                 downlink = stat.value
         return OutboundStatsResponse(tag=tag, uplink=uplink, downlink=downlink)
+
+    def get_all_online_users(self, timeout: int = None) -> typing.List[str]:
+        """Emails of the users that have at least one open connection.
+        Needs "statsUserOnline" in the policy level."""
+        try:
+            stub = command_pb2_grpc.StatsServiceStub(self._channel)
+            r = stub.GetAllOnlineUsers(command_pb2.GetAllOnlineUsersRequest(), timeout=timeout)
+        except grpc.RpcError as e:
+            raise RelatedError(e)
+
+        # names look like "user>>>{email}>>>online"
+        return [name.split('>>>')[1] for name in r.users if name.count('>>>') == 2]
+
+    def get_user_online_ips(self, email: str, timeout: int = None) -> typing.Dict[str, int]:
+        """IPs the user is connected from right now, mapped to the unix time
+        each one was first seen. Empty when the user is offline."""
+        try:
+            stub = command_pb2_grpc.StatsServiceStub(self._channel)
+            r = stub.GetStatsOnlineIpList(command_pb2.GetStatsRequest(name=f"user>>>{email}>>>online"),
+                                          timeout=timeout)
+        except grpc.RpcError as e:
+            if e.code() == grpc.StatusCode.NOT_FOUND:
+                return {}
+            raise RelatedError(e)
+        return dict(r.ips)

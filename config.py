@@ -109,6 +109,9 @@ NOTIFY_USER_SUB_REVOKED = config("NOTIFY_USER_SUB_REVOKED", default=True, cast=b
 NOTIFY_IF_DATA_USAGE_PERCENT_REACHED = config("NOTIFY_IF_DATA_USAGE_PERCENT_REACHED", default=True, cast=bool)
 NOTIFY_IF_DAYS_LEFT_REACHED = config("NOTIFY_IF_DAYS_LEFT_REACHED", default=True, cast=bool)
 NOTIFY_LOGIN = config("NOTIFY_LOGIN", default=True, cast=bool)
+# Xray core crashed / came back, a certificate failed to renew
+NOTIFY_SYSTEM_ALERTS = config("NOTIFY_SYSTEM_ALERTS", default=True, cast=bool)
+NOTIFY_DEVICE_LIMIT = config("NOTIFY_DEVICE_LIMIT", default=True, cast=bool)
 
 ACTIVE_STATUS_TEXT = config("ACTIVE_STATUS_TEXT", default="Active")
 EXPIRED_STATUS_TEXT = config("EXPIRED_STATUS_TEXT", default="Expired")
@@ -165,6 +168,12 @@ SUB_PROFILE_TITLE = config("SUB_PROFILE_TITLE", default="Subscription")
 # subscription headers need room too.
 SUB_ROUTING_MAX_HEADER_SIZE = config("SUB_ROUTING_MAX_HEADER_SIZE", cast=int, default=3072)
 
+# How many devices (distinct IPs online at the same time) a subscription may
+# use before admins are notified; a user's own limit overrides it, 0 = no limit.
+DEVICE_LIMIT_DEFAULT = config("DEVICE_LIMIT_DEFAULT", cast=int, default=5)
+# Don't repeat the notification for the same user more often than this.
+DEVICE_LIMIT_NOTIFY_INTERVAL_MINUTES = config("DEVICE_LIMIT_NOTIFY_INTERVAL_MINUTES", cast=int, default=60)
+
 # discord webhook log
 DISCORD_WEBHOOK_URL = config("DISCORD_WEBHOOK_URL", default="")
 
@@ -182,3 +191,4 @@ JOB_RECORD_USER_USAGES_INTERVAL = config("JOB_RECORD_USER_USAGES_INTERVAL", cast
 JOB_REVIEW_USERS_INTERVAL = config("JOB_REVIEW_USERS_INTERVAL", cast=int, default=10)
 JOB_SEND_NOTIFICATIONS_INTERVAL = config("JOB_SEND_NOTIFICATIONS_INTERVAL", cast=int, default=30)
 JOB_CERTIFICATE_RENEWAL_INTERVAL = config("JOB_CERTIFICATE_RENEWAL_INTERVAL", cast=int, default=43200)
+JOB_DEVICE_LIMIT_INTERVAL = config("JOB_DEVICE_LIMIT_INTERVAL", cast=int, default=60)

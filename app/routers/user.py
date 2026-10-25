@@ -9,15 +9,19 @@ from app.db import Session, crud, get_db
 from app.dependencies import get_expired_users_list, get_validated_user, validate_dates
 from app.models.admin import Admin
 from app.models.user import (
+    TopUsersUsageResponse,
     UserCreate,
+    UserDevicesResponse,
     UserModify,
     UserResponse,
     UsersResponse,
     UserStatus,
     UsersUsagesResponse,
     UserUsagesResponse,
+    UserUsageTimelineResponse,
 )
-from app.utils import report, responses
+from app.utils import devices, report, responses
+from config import DEVICE_LIMIT_DEFAULT
 
 router = APIRouter(tags=["User"], prefix="/api", responses={401: responses._401})
 
@@ -268,6 +272,43 @@ def get_user_usage(
     return {"usages": usages, "username": dbuser.username}
 
 
+@router.get("/user/{username}/usage/timeline", response_model=UserUsageTimelineResponse,
+            responses={403: responses._403, 404: responses._404})
+def get_user_usage_timeline(
+    dbuser: UserResponse = Depends(get_validated_user),
+    start: str = "",
+    end: str = "",
+    db: Session = Depends(get_db),
+):
+    """A user's traffic over time: per hour for up to two days, per day otherwise."""
+    start, end = validate_dates(start, end)
+    period, points = crud.get_user_usage_timeline(db, dbuser, start, end)
+    return {
+        "username": dbuser.username,
+        "period": period,
+        "usages": [{"date": date.replace(tzinfo=timezone.utc), "used_traffic": used} for date, used in points],
+    }
+
+
+@router.get("/user/{username}/devices", response_model=UserDevicesResponse,
+            responses={403: responses._403, 404: responses._404})
+def get_user_devices(dbuser: UserResponse = Depends(get_validated_user)):
+    """Devices (IPs) the user is connected from right now, as of the last
+    device limit check."""
+    online, checked_at = devices.get(dbuser.id)
+    return {
+        "username": dbuser.username,
+        "limit": devices.effective_limit(dbuser.device_limit),
+        "user_limit": dbuser.device_limit,
+        "default_limit": DEVICE_LIMIT_DEFAULT,
+        "devices": [
+            {"address": address, "since": datetime.fromtimestamp(since, timezone.utc)}
+            for address, since in sorted(online.items(), key=lambda item: item[1])
+        ],
+        "checked_at": checked_at.replace(tzinfo=timezone.utc) if checked_at else None,
+    }
+
+
 @router.post("/user/{username}/active-next", response_model=UserResponse, responses={403: responses._403, 404: responses._404})
 def active_next_plan(
     bg: BackgroundTasks,
@@ -311,6 +352,23 @@ def get_users_usage(
     )
 
     return {"usages": usages}
+
+
+@router.get("/users/usage/top", response_model=TopUsersUsageResponse)
+def get_top_users_usage(
+    start: str = "",
+    end: str = "",
+    limit: int = Query(10, ge=1, le=50),
+    db: Session = Depends(get_db),
+    owner: Union[List[str], None] = Query(None, alias="admin"),
+    admin: Admin = Depends(Admin.get_current),
+):
+    """The users that used the most traffic in a date range."""
+    start, end = validate_dates(start, end)
+    rows = crud.get_top_users_usages(
+        db=db, start=start, end=end, admin=owner if admin.is_sudo else [admin.username], limit=limit
+    )
+    return {"usages": [{"username": username, "used_traffic": used} for username, used in rows]}
 
 
 @router.put("/user/{username}/set-owner", response_model=UserResponse)

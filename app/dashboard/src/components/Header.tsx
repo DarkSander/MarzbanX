@@ -13,6 +13,7 @@ import {
 import {
   ArrowLeftOnRectangleIcon,
   Bars3Icon,
+  ChartBarIcon,
   ChartPieIcon,
   Cog6ToothIcon,
   DocumentMinusIcon,
@@ -54,6 +55,7 @@ const NodesUsageIcon = chakra(ChartPieIcon, iconProps);
 const ResetUsageIcon = chakra(DocumentMinusIcon, iconProps);
 const CertificatesIcon = chakra(LockClosedIcon, iconProps);
 const SubscriptionRoutingIcon = chakra(MapIcon, iconProps);
+const TopUsersIcon = chakra(ChartBarIcon, iconProps);
 
 export const Header: FC<HeaderProps> = ({ actions }) => {
   const { userData, getUserIsSuccess, getUserIsPending } = useGetUser();
@@ -72,6 +74,7 @@ export const Header: FC<HeaderProps> = ({ actions }) => {
     onShowingNodesUsage,
     onEditingCertificates,
     onEditingSubscriptionRouting,
+    onShowingTopUsers,
   } = useDashboard();
   const { t } = useTranslation();
   const { colorMode, toggleColorMode } = useColorMode();
@@ -158,6 +161,14 @@ export const Header: FC<HeaderProps> = ({ actions }) => {
                   </MenuItem>
                 </>
               )}
+              <MenuItem
+                maxW="170px"
+                fontSize="sm"
+                icon={<TopUsersIcon />}
+                onClick={onShowingTopUsers.bind(null, true)}
+              >
+                {t("header.topUsers")}
+              </MenuItem>
               <Link to="/login">
                 <MenuItem maxW="170px" fontSize="sm" icon={<LogoutIcon />}>
                   {t("header.logout")}

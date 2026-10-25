@@ -9,6 +9,7 @@ import { Header } from "components/Header";
 import { HostsDialog } from "components/HostsDialog";
 import { NodesDialog } from "components/NodesModal";
 import { NodesUsage } from "components/NodesUsage";
+import { TopUsersModal } from "components/TopUsersModal";
 import { QRCodeDialog } from "components/QRCodeDialog";
 import { ResetAllUsageModal } from "components/ResetAllUsageModal";
 import { ResetUserUsageModal } from "components/ResetUserUsageModal";
@@ -39,6 +40,7 @@ export const Dashboard: FC = () => {
         <RevokeSubscriptionModal />
         <NodesDialog />
         <NodesUsage />
+        <TopUsersModal />
         <ResetAllUsageModal />
         <CoreSettingsModal />
         <CertificatesModal />

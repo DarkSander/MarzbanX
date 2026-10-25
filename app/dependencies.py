@@ -37,15 +37,22 @@ def get_dbnode(node_id: int, db: Session = Depends(get_db)):
 
 
 def validate_dates(start: Optional[Union[str, datetime]], end: Optional[Union[str, datetime]]) -> (datetime, datetime):
-    """Validate if start and end dates are correct and if end is after start."""
+    """Validate if start and end dates are correct and if end is after start.
+    Dates without a timezone are UTC (that's what the dashboard sends), not
+    the server's local time."""
+    def parse(value: str) -> datetime:
+        date = datetime.fromisoformat(value)
+        if date.tzinfo is None:
+            return date.replace(tzinfo=timezone.utc)
+        return date.astimezone(timezone.utc)
+
     try:
         if start:
-            start_date = start if isinstance(start, datetime) else datetime.fromisoformat(
-                start).astimezone(timezone.utc)
+            start_date = start if isinstance(start, datetime) else parse(start)
         else:
             start_date = datetime.now(timezone.utc) - timedelta(days=30)
         if end:
-            end_date = end if isinstance(end, datetime) else datetime.fromisoformat(end).astimezone(timezone.utc)
+            end_date = end if isinstance(end, datetime) else parse(end)
             if start_date and end_date < start_date:
                 raise HTTPException(status_code=400, detail="Start date must be before end date")
         else:
